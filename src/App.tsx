@@ -12,6 +12,7 @@ import { BookmarkProvider } from "@/contexts/BookmarkContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 import FolderView from "./pages/FolderView";
 import CollectionsList from "./pages/CollectionsList";
 import CollectionView from "./pages/CollectionView";
@@ -36,6 +37,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/folder/:folderId" element={<FolderView />} />
                 <Route path="/collections" element={<CollectionsList />} />
                 <Route path="/collections/:collectionId" element={<CollectionView />} />
