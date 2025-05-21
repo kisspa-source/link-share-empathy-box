@@ -17,6 +17,7 @@ import FolderView from "./pages/FolderView";
 import CollectionsList from "./pages/CollectionsList";
 import CollectionView from "./pages/CollectionView";
 import TagsList from "./pages/TagsList";
+import TagDetail from "./pages/TagDetail";
 import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
 import SearchPage from "./pages/SearchPage";
@@ -42,6 +43,7 @@ const App = () => (
                 <Route path="/collections" element={<CollectionsList />} />
                 <Route path="/collections/:collectionId" element={<CollectionView />} />
                 <Route path="/tags" element={<TagsList />} />
+                <Route path="/tags/:tagId" element={<TagDetail />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/u/:userId" element={<UserProfile />} />
                 <Route path="/search" element={<SearchPage />} />
