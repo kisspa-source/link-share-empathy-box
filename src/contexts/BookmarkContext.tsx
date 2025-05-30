@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { Bookmark, Collection, Folder, Tag, Category } from '../types/bookmark';
 import { toast } from "sonner";
@@ -195,7 +194,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         bookmarks: collectionBookmarks,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        shareUrl: `linkbox.co.kr/c/${Date.now().toString(36)}`,
+        shareUrl: `linku.me/c/${Date.now().toString(36)}`,
         coverImage: collectionBookmarks[0]?.thumbnail
       };
       

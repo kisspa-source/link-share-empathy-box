@@ -140,11 +140,11 @@ export const mockCollections: Collection[] = [
     isPublic: true,
     userId: '1',
     userNickname: '링쿠미',
-    userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linkbox',
+    userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linku.me',
     createdAt: '2023-05-20T12:00:00Z',
     updatedAt: '2023-05-20T12:00:00Z',
     bookmarks: [mockBookmarks[0], mockBookmarks[7], mockBookmarks[5]],
-    shareUrl: 'linkbox.co.kr/c/dev-resources',
+    shareUrl: 'linku.me/c/dev-resources',
     coverImage: mockBookmarks[0].thumbnail
   },
   {
@@ -154,11 +154,11 @@ export const mockCollections: Collection[] = [
     isPublic: true,
     userId: '1',
     userNickname: '링쿠미',
-    userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linkbox',
+    userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linku.me',
     createdAt: '2023-05-19T14:30:00Z',
     updatedAt: '2023-05-19T14:30:00Z',
     bookmarks: [mockBookmarks[1]],
-    shareUrl: 'linkbox.co.kr/c/ai-resources',
+    shareUrl: 'linku.me/c/ai-resources',
     coverImage: mockBookmarks[1].thumbnail
   }
 ];
