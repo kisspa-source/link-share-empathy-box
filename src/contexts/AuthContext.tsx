@@ -22,7 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Mock user for demo
 const mockUser: User = {
   id: '1',
-  email: 'demo@linkuplum.co.kr',
+  email: 'demo@linku.me',
   nickname: '링쿠미',
   avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linkuplum'
 };
