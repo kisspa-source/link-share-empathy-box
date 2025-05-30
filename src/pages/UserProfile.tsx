@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,8 +19,8 @@ export default function UserProfile() {
   // Mock user data
   const profileUser = {
     id: userId || '1',
-    nickname: '링크박스',
-    avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId || 'linkbox'}`,
+    nickname: '링쿠미',
+    avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId || 'linkuplum'}`,
     bio: 'AI와 웹 개발에 관심이 많은 개발자입니다. 유용한 자료를 모아서 공유합니다.',
     social: [
       { name: 'GitHub', url: 'https://github.com' },
@@ -31,7 +30,7 @@ export default function UserProfile() {
   };
   
   useEffect(() => {
-    document.title = `${profileUser.nickname}의 LinkBox`;
+    document.title = `${profileUser.nickname}의 linku.me`;
   }, [profileUser.nickname]);
 
   return (
@@ -44,7 +43,7 @@ export default function UserProfile() {
           </Avatar>
           
           <h1 className="text-3xl font-bold tracking-tight mb-2">
-            {profileUser.nickname}의 LinkBox
+            {profileUser.nickname}의 linku.me
           </h1>
           
           <p className="text-muted-foreground max-w-lg mx-auto mb-6">
@@ -160,7 +159,7 @@ export default function UserProfile() {
               href="/" 
               className="underline hover:text-foreground"
             >
-              LinkBox
+              linku.me
             </a>
             로 만들어진 페이지입니다
           </p>

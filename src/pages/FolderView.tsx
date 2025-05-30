@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useBookmarks } from "@/contexts/BookmarkContext";
@@ -18,8 +17,8 @@ export default function FolderView() {
 
   useEffect(() => {
     document.title = folder 
-      ? `${folder.name} 폴더 | LinkBox` 
-      : "폴더 | LinkBox";
+      ? `${folder.name} 폴더 | linku.me` 
+      : "폴더 | linku.me";
   }, [folder]);
   
   if (!folder && folderId) {

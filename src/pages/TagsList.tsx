@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -19,7 +18,7 @@ export default function TagsList() {
   }).sort((a, b) => b.count - a.count);
   
   useEffect(() => {
-    document.title = "태그 | LinkBox";
+    document.title = "태그 | linku.me";
   }, []);
 
   return (

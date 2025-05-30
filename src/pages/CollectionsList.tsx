@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -11,7 +10,7 @@ export default function CollectionsList() {
   const { collections, isLoading } = useBookmarks();
   
   useEffect(() => {
-    document.title = "컬렉션 | LinkBox";
+    document.title = "컬렉션 | linku.me";
   }, []);
 
   return (

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +16,7 @@ export default function Signup() {
   const navigate = useNavigate();
   
   useEffect(() => {
-    document.title = "회원가입 | LinkBox";
+    document.title = "회원가입 | linku.me";
     
     // Redirect if already logged in
     if (isAuthenticated) {

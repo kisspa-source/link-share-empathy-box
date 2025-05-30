@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useBookmarks } from "@/contexts/BookmarkContext";
@@ -18,8 +17,8 @@ export default function CollectionView() {
 
   useEffect(() => {
     document.title = collection 
-      ? `${collection.name} | LinkBox` 
-      : "컬렉션 | LinkBox";
+      ? `${collection.name} | linku.me` 
+      : "컬렉션 | linku.me";
   }, [collection]);
   
   const handleCopyShareUrl = () => {

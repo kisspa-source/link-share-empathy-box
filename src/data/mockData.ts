@@ -1,4 +1,3 @@
-
 import { Bookmark, Collection, Folder, Tag, Category } from '../types/bookmark';
 
 export const mockTags: Tag[] = [
@@ -140,7 +139,7 @@ export const mockCollections: Collection[] = [
     description: '웹 개발 학습에 유용한 링크 모음',
     isPublic: true,
     userId: '1',
-    userNickname: '링크박스',
+    userNickname: '링쿠미',
     userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linkbox',
     createdAt: '2023-05-20T12:00:00Z',
     updatedAt: '2023-05-20T12:00:00Z',
@@ -154,7 +153,7 @@ export const mockCollections: Collection[] = [
     description: 'AI 뉴스, 도구, 연구 자료',
     isPublic: true,
     userId: '1',
-    userNickname: '링크박스',
+    userNickname: '링쿠미',
     userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linkbox',
     createdAt: '2023-05-19T14:30:00Z',
     updatedAt: '2023-05-19T14:30:00Z',

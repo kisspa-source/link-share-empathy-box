@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import { useBookmarks } from "@/contexts/BookmarkContext";
@@ -27,7 +26,7 @@ export default function SearchPage() {
   const categories: Category[] = ["IT", "News", "Shopping", "Community", "Education", "Entertainment", "Finance", "Health", "Travel", "Other"];
   
   useEffect(() => {
-    document.title = "검색 | LinkBox";
+    document.title = "검색 | linku.me";
   }, []);
   
   const handleSearch = () => {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +14,7 @@ export default function Login() {
   const navigate = useNavigate();
   
   useEffect(() => {
-    document.title = "로그인 | LinkBox";
+    document.title = "로그인 | linku.me";
     
     // Redirect if already logged in
     if (isAuthenticated) {
@@ -49,7 +48,7 @@ export default function Login() {
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
         <div className="flex flex-col space-y-2 text-center">
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-linkbox-purple to-linkbox-blue text-transparent bg-clip-text">
-            LinkBox
+            linku.me
           </h1>
           <p className="text-sm text-muted-foreground">
             계정에 로그인하여 북마크를 관리하세요

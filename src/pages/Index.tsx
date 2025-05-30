@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBookmarks } from "@/contexts/BookmarkContext";
@@ -15,7 +14,7 @@ export default function Index() {
   const [tab, setTab] = useState("all");
 
   useEffect(() => {
-    document.title = "LinkBox - AI-powered Bookmark Sharing Platform";
+    document.title = "linku.me - AI-powered Bookmark Sharing Platform";
   }, []);
 
   if (!isAuthenticated) {

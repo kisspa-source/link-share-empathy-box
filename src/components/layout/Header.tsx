@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,10 +25,10 @@ export default function Header() {
         <Link to="/" className="mr-4 flex items-center space-x-2">
           <div className="flex flex-col items-start">
             <span className="hidden sm:flex text-xl font-bold tracking-tight bg-gradient-to-r from-linkbox-purple to-linkbox-blue text-transparent bg-clip-text">
-              LinkBox
+              linku.me
             </span>
             <span className="sm:hidden text-xl font-bold tracking-tight bg-gradient-to-r from-linkbox-purple to-linkbox-blue text-transparent bg-clip-text">
-              LB
+              LP
             </span>
           </div>
         </Link>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,7 +43,7 @@ export default function ForgotPassword() {
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-linkbox-purple to-linkbox-blue text-transparent bg-clip-text">
-              LinkBox
+              linku.me
             </h1>
             <p className="text-sm text-muted-foreground">
               이메일을 확인해주세요
@@ -82,7 +81,7 @@ export default function ForgotPassword() {
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
         <div className="flex flex-col space-y-2 text-center">
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-linkbox-purple to-linkbox-blue text-transparent bg-clip-text">
-            LinkBox
+            linku.me
           </h1>
           <p className="text-sm text-muted-foreground">
             비밀번호 재설정

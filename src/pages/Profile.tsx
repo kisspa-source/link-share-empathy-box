@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +12,7 @@ export default function Profile() {
   const { user, logout } = useAuth();
   
   useEffect(() => {
-    document.title = "프로필 | LinkBox";
+    document.title = "프로필 | linku.me";
   }, []);
 
   const handleUpdateProfile = (e: React.FormEvent) => {

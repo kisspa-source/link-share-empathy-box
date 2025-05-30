@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode } from 'react';
 
 // Mock user data for MVP
@@ -23,9 +22,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Mock user for demo
 const mockUser: User = {
   id: '1',
-  email: 'demo@linkbox.co.kr',
-  nickname: '링크박스',
-  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linkbox'
+  email: 'demo@linkuplum.co.kr',
+  nickname: '링쿠미',
+  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linkuplum'
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
