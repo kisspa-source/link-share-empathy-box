@@ -13,7 +13,7 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signup, isAuthenticated } = useAuth();
+  const { signup, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -24,22 +24,29 @@ export default function Signup() {
       navigate("/");
     }
 
-    // 북마크 실시간 구독
-    const subscription = supabase
-      .channel('bookmarks')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'bookmarks',
-          filter: `user_id=eq.${currentUser.id}`
-        }, 
-        (payload) => {
-          console.log('Change received!', payload)
-        }
-      )
-      .subscribe()
-  }, [isAuthenticated, navigate]);
+    // 북마크 실시간 구독은 로그인한 사용자에게만 적용
+    if (user) {
+      const subscription = supabase
+        .channel('bookmarks')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'bookmarks',
+            filter: `user_id=eq.${user.id}`
+          }, 
+          (payload) => {
+            console.log('Change received!', payload)
+          }
+        )
+        .subscribe()
+
+      // Cleanup subscription on unmount
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [isAuthenticated, navigate, user]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
