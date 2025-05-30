@@ -160,10 +160,10 @@
 ## 3. 인증 설정
 
 ### Task 3.1: 이메일 인증 설정
-- [ ] Authentication > Providers > Email 설정
-- [ ] "Enable Email Signup" 활성화
-- [ ] "Confirm email" 설정 (선택사항)
-- [ ] 이메일 템플릿 커스터마이징 (선택사항)
+- [x] Authentication > Providers > Email 설정
+- [x] "Enable Email Signup" 활성화
+- [x] "Confirm email" 설정 (선택사항)
+- [x] 이메일 템플릿 커스터마이징 (선택사항)
 
 ### Task 3.2: 소셜 로그인 설정
 #### Google 로그인
@@ -235,10 +235,10 @@
 ## 4. 스토리지 설정
 
 ### Task 4.1: 스토리지 버킷 생성
-- [ ] Storage > New Bucket
-- [ ] 버킷 이름: `avatars`
-- [ ] Public bucket 체크
-- [ ] RLS 정책 설정:
+- [x] Storage > New Bucket
+- [x] 버킷 이름: `avatars`
+- [x] Public bucket 체크
+- [x] RLS 정책 설정:
   ```sql
   CREATE POLICY "Avatar images are publicly accessible"
   ON storage.objects FOR SELECT
@@ -254,7 +254,7 @@
 
 ## 5. 실시간 기능 설정
 
-### Task 5.1: 실시간 구독 설정
+### Task 5.1: 실시간 구독 설정 (무료버전으로 Replication 설정 향후 예정)
 - [ ] Database > Replication 설정
 - [ ] 실시간 구독이 필요한 테이블 선택:
   - [ ] bookmarks
@@ -301,3 +301,40 @@
 3. RLS 정책을 주기적으로 검토하고 업데이트하세요.
 4. 데이터베이스 백업을 정기적으로 확인하세요.
 5. API 키는 안전하게 보관하고, 필요한 경우에만 공유하세요. 
+
+// 아바타 업로드 함수
+const uploadAvatar = async (file: File) => {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `avatar.${fileExt}`;
+  const filePath = `${user.id}/${fileName}`;
+
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, {
+      upsert: true // 기존 파일이 있으면 덮어쓰기
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  // 업로드된 파일의 공개 URL 가져오기
+  const { data } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
+};
+
+try {
+  const avatarUrl = await uploadAvatar(file);
+  // 성공 처리
+} catch (error) {
+  if (error.message.includes('File size exceeds limit')) {
+    toast.error('파일 크기는 5MB를 초과할 수 없습니다.');
+  } else if (error.message.includes('Invalid file type')) {
+    toast.error('지원되지 않는 파일 형식입니다.');
+  } else {
+    toast.error('파일 업로드에 실패했습니다.');
+  }
+} 
