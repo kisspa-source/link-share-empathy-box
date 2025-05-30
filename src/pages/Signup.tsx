@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -22,6 +23,22 @@ export default function Signup() {
     if (isAuthenticated) {
       navigate("/");
     }
+
+    // 북마크 실시간 구독
+    const subscription = supabase
+      .channel('bookmarks')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'bookmarks',
+          filter: `user_id=eq.${currentUser.id}`
+        }, 
+        (payload) => {
+          console.log('Change received!', payload)
+        }
+      )
+      .subscribe()
   }, [isAuthenticated, navigate]);
   
   const handleSubmit = async (e: React.FormEvent) => {
