@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -14,7 +15,7 @@ export default function TagDetail() {
   const tag = tags.find(t => t.id === tagId);
   
   useEffect(() => {
-    document.title = `#${tag?.name || '태그'} | linku.me`;
+    document.title = `#${tag?.name || '태그'} | LinkBox`;
     
     // Filter bookmarks by tag
     const filtered = bookmarks.filter(bookmark => 
