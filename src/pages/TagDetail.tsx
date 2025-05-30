@@ -15,7 +15,7 @@ export default function TagDetail() {
   const tag = tags.find(t => t.id === tagId);
   
   useEffect(() => {
-    document.title = `#${tag?.name || '태그'} | LinkBox`;
+    document.title = `#${tag?.name || '태그'} | linku.me`;
     
     // Filter bookmarks by tag
     const filtered = bookmarks.filter(bookmark => 

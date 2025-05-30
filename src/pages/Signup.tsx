@@ -60,7 +60,7 @@ export default function Signup() {
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
         <div className="flex flex-col space-y-2 text-center">
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-linkbox-purple to-linkbox-blue text-transparent bg-clip-text">
-            LinkBox
+            linku.me
           </h1>
           <p className="text-sm text-muted-foreground">
             회원가입하여 북마크를 저장하고 공유하세요

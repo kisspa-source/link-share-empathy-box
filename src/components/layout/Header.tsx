@@ -93,7 +93,7 @@ export default function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to={`/u/${user.id}`} className="w-full cursor-pointer">
-                      <span>내 LinkBox 페이지</span>
+                      <span>내 linku.me 페이지</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
