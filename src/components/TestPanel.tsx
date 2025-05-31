@@ -41,7 +41,7 @@ export function TestPanel() {
         await testRealtimeUpdates(user.id);
       }
       
-      // 보안 테스트
+      // 보안 테스트 (마지막으로 이동)
       console.log('6. 보안 테스트');
       await testSecurity();
       
