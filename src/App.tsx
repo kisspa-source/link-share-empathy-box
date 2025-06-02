@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
+import AuthCallback from "./pages/AuthCallback";
 import FolderView from "./pages/FolderView";
 import CollectionsList from "./pages/CollectionsList";
 import CollectionView from "./pages/CollectionView";
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/u/:userId" element={<UserProfile />} />
                 <Route path="/search" element={<SearchPage />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
