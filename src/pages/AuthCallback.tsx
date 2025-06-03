@@ -64,7 +64,22 @@ const AuthCallback = () => {
       
       if (session?.user) {
         console.log('OAuth 인증 성공 - 세션 저장 완료:', session.user);
-        setUser(session.user);
+        
+        // User 타입에 맞게 변환
+        const userData = {
+          id: session.user.id,
+          email: session.user.email || '',
+          nickname: session.user.user_metadata?.name || 
+                   session.user.user_metadata?.nickname || 
+                   session.user.user_metadata?.full_name || 
+                   '사용자',
+          avatarUrl: session.user.user_metadata?.avatar_url ||
+                    session.user.user_metadata?.picture,
+          provider: session.user.app_metadata?.provider
+        };
+        
+        console.log('변환된 사용자 정보:', userData);
+        setUser(userData);
         
         // 리다이렉트 경로 결정
         let redirectPath = '/';

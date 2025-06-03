@@ -19,18 +19,20 @@ export type Category =
 
 export interface Bookmark {
   id: string;
+  user_id: string;
   url: string;
   title: string;
   description: string;
+  image_url?: string;
   thumbnail?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   favicon?: string;
-  category: Category;
-  tags: Tag[];
+  category?: Category;
+  tags: string[]; // Supabase에서는 string[]로 저장됨
   memo?: string;
-  folderId?: string;
-  savedBy: number; // Number of users who saved this bookmark
+  folder_id?: string;
+  saved_by?: number; // Number of users who saved this bookmark
 }
 
 export interface Collection {
