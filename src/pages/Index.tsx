@@ -9,14 +9,51 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Bookmark, LogIn } from "lucide-react";
 
 export default function Index() {
-  const { isAuthenticated, user } = useAuth();
-  const { bookmarks, collections, isLoading } = useBookmarks();
+  const { isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
+  const { bookmarks, collections, isLoading: isBookmarksLoading } = useBookmarks();
   const [tab, setTab] = useState("all");
+  const [isClient, setIsClient] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
+    console.log('Index 컴포넌트 마운트됨', { isAuthenticated, isAuthLoading, user });
     document.title = "linku.me - AI-powered Bookmark Sharing Platform";
+    
+    const timer = setTimeout(() => {
+      setIsClient(true);
+      setInitialLoad(false);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
+  // 디버그용 로그
+  useEffect(() => {
+    console.log('인증 상태 업데이트:', { isAuthenticated, isAuthLoading, user });
+  }, [isAuthenticated, isAuthLoading, user]);
+
+  // 초기 로딩 또는 클라이언트 사이드 체크 중
+  if (initialLoad || !isClient) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // 인증 확인 중 로딩 표시 (최대 5초)
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">사용자 정보를 불러오는 중입니다...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 인증되지 않은 사용자에게 보여줄 UI
   if (!isAuthenticated) {
     return (
       <Layout showSidebar={false}>
@@ -188,7 +225,7 @@ export default function Index() {
           <TabsContent value="all" className="mt-6">
             <BookmarkGrid 
               bookmarks={bookmarks} 
-              isLoading={isLoading} 
+              isLoading={isBookmarksLoading} 
               emptyMessage="저장된 북마크가 없습니다. 북마크를 추가해보세요!"
             />
           </TabsContent>

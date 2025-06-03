@@ -15,26 +15,41 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState<"google" | "github" | "kakao" | null>(null);
-  const { login, signInWithGoogle, signInWithGitHub, signInWithKakao, isAuthenticated } = useAuth();
+  const { 
+    login, 
+    signInWithGoogle, 
+    signInWithGitHub, 
+    signInWithKakao, 
+    isAuthenticated, 
+    isLoading: isAuthLoading 
+  } = useAuth();
+  
   const navigate = useNavigate();
   const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
   
   // 이미 로그인된 상태인지 확인하고 리다이렉트
   useEffect(() => {
     document.title = "로그인 | linku.me";
     
-    const checkAuth = async () => {
-      console.log('로그인 페이지 - 인증 상태 확인 중...', { isAuthenticated });
-      
-      if (isAuthenticated) {
-        console.log('이미 로그인된 사용자입니다. 리다이렉트 중...');
-        const from = location.state?.from?.pathname || "/";
-        navigate(from, { replace: true });
-      }
-    };
+    // 인증 상태가 로딩 중이면 아무것도 하지 않음
+    if (isAuthLoading) return;
     
-    checkAuth();
-  }, [isAuthenticated, navigate, location]);
+    // 인증된 사용자인 경우 리다이렉트
+    if (isAuthenticated) {
+      console.log('로그인 페이지 - 이미 인증된 사용자입니다. 리다이렉트 중...', { from });
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, isAuthLoading, navigate, from]);
+  
+  // 인증 로딩 중이면 로딩 스피너 표시
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
   
   const handleSocialSignIn = async (provider: "google" | "github" | "kakao") => {
     try {
