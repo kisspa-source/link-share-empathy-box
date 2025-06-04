@@ -237,6 +237,38 @@ export const bookmarkApi = {
   }
 }
 
+// 북마크 직접 삭제 (Supabase 클라이언트 우회)
+export const directBookmarkDelete = async (id: string, accessToken?: string) => {
+  try {
+    const headers: HeadersInit = {
+      'apikey': supabaseAnonKey
+    };
+
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/bookmarks?id=eq.${id}`,
+      {
+        method: 'DELETE',
+        headers
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('직접 북마크 삭제 실패:', error);
+      return { error };
+    }
+
+    return { error: null };
+  } catch (error) {
+    console.error('직접 북마크 삭제 오류:', error);
+    return { error };
+  }
+};
+
 // 컬렉션 관련 함수
 export const collectionApi = {
   // 컬렉션 생성

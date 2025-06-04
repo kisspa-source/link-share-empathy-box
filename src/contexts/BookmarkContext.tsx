@@ -2,7 +2,14 @@ import { createContext, useContext, useState, ReactNode, useCallback, useEffect 
 import { Bookmark, Collection, Folder, Tag, Category } from '../types/bookmark';
 import { toast } from "sonner";
 import { useAuth } from './AuthContext';
-import { supabase, bookmarkApi, collectionApi, directBookmarkInsert, folderApi } from '../lib/supabase';
+import {
+  supabase,
+  bookmarkApi,
+  collectionApi,
+  directBookmarkInsert,
+  directBookmarkDelete,
+  folderApi
+} from '../lib/supabase';
 
 interface BookmarkContextType {
   bookmarks: Bookmark[];
@@ -288,29 +295,32 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteBookmark = async (id: string) => {
     try {
-      // 사용자 로그인 확인
       if (!user) {
         toast.error('북마크를 삭제하려면 로그인해야 합니다.');
         return;
       }
 
       console.log('Supabase에서 북마크 삭제 시도:', id);
-      
-      // Supabase에서 북마크 삭제
+
       const { error } = await supabase
         .from('bookmarks')
         .delete()
         .eq('id', id)
-        .eq('user_id', user.id); // 사용자 ID로 필터링하여 보안 강화
-      
+        .eq('user_id', user.id);
+
       if (error) {
-        console.error('Supabase 북마크 삭제 오류:', error);
-        throw new Error(`북마크 삭제 오류: ${error.message}`);
+        console.warn('Supabase 클라이언트 삭제 실패, 직접 API 시도', error);
+
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        const directResult = await directBookmarkDelete(id, token);
+
+        if (directResult.error) {
+          throw directResult.error;
+        }
       }
-      
-      console.log('Supabase 북마크 삭제 성공');
-      
-      // 상태 업데이트
+
+      console.log('북마크 삭제 성공');
       setBookmarks(prev => prev.filter(bookmark => bookmark.id !== id));
       toast.success('북마크가 삭제되었습니다');
     } catch (error) {
