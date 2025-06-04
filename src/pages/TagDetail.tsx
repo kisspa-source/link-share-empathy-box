@@ -18,9 +18,7 @@ export default function TagDetail() {
     document.title = `#${tag?.name || '태그'} | linku.me`;
     
     // Filter bookmarks by tag
-    const filtered = bookmarks.filter(bookmark => 
-      bookmark.tags.some(t => t.id === tagId)
-    );
+    const filtered = bookmarks.filter(bookmark => bookmark.tags.includes(tagId || ''));
     setFilteredBookmarks(filtered);
   }, [tagId, bookmarks, tag]);
 
@@ -48,7 +46,7 @@ export default function TagDetail() {
       <div className="space-y-6">
         <div>
           <div className="flex items-center gap-2">
-            <TagIcon className="h-5 w-5" style={{ color: tag?.color }} />
+            <TagIcon className="h-5 w-5" />
             <h1 className="text-2xl font-bold tracking-tight">#{tag?.name}</h1>
           </div>
           <p className="text-muted-foreground">

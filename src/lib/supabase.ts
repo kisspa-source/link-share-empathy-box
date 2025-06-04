@@ -326,3 +326,59 @@ export const profileApi = {
     return data
   }
 }
+
+export const folderApi = {
+  async list(userId: string) {
+    const { data, error } = await supabase
+      .from('folders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+    return data
+  },
+
+  async create(name: string, userId: string, parentId?: string) {
+    const { data, error } = await supabase
+      .from('folders')
+      .insert({ name, user_id: userId, parent_folder_id: parentId ?? null })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    await supabase.from('folder_permissions').insert({
+      folder_id: data.id,
+      user_id: userId,
+      permission_level: 'owner'
+    })
+
+    return data
+  },
+
+  async update(id: string, updates: { name?: string; parent_folder_id?: string | null }) {
+    const { data, error } = await supabase
+      .from('folders')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase.from('folders').delete().eq('id', id)
+    if (error) throw error
+  }
+}
+
+export const uploadAvatar = async (userId: string, file: File) => {
+  const filePath = `${userId}/${Date.now()}_${file.name}`
+  const { error } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true })
+  if (error) throw error
+  const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+  return data.publicUrl
+}
