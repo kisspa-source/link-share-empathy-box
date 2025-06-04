@@ -314,3 +314,15 @@ export const collectionApi = {
     if (error) throw error
   }
 } 
+export const profileApi = {
+  async update(id: string, updates: { nickname?: string; avatar_url?: string }) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert({ id, ...updates })
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+}
