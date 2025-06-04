@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/contexts/AuthContext";
+import { profileApi, supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,15 +10,28 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
+  const [nickname, setNickname] = useState(user?.nickname || "");
   
   useEffect(() => {
     document.title = "프로필 | linku.me";
+    if (user) {
+      setNickname(user.nickname);
+    }
   }, []);
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("프로필이 업데이트되었습니다.");
+    if (!user) return;
+    try {
+      const updated = await profileApi.update(user.id, { nickname });
+      setUser({ ...user, nickname: updated.nickname });
+      await supabase.auth.updateUser({ data: { nickname } });
+      toast.success("프로필이 업데이트되었습니다.");
+    } catch (error) {
+      console.error(error);
+      toast.error("프로필 업데이트 중 오류가 발생했습니다.");
+    }
   };
   
   const handleUpdatePassword = (e: React.FormEvent) => {
@@ -74,7 +88,11 @@ export default function Profile() {
                   
                   <div className="grid gap-2">
                     <Label htmlFor="nickname">닉네임</Label>
-                    <Input id="nickname" defaultValue={user.nickname} />
+                    <Input
+                      id="nickname"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                    />
                   </div>
                 </div>
                 
