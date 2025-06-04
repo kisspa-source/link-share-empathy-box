@@ -16,13 +16,22 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSocialLoading, setIsSocialLoading] = useState<"google" | "github" | "kakao" | null>(null);
-  const { signup, signInWithGoogle, signInWithGitHub, signInWithKakao, isAuthenticated, user } = useAuth();
+  const [isSocialLoading, setIsSocialLoading] = useState<
+    "google" | "github" | "kakao" | null
+  >(null);
+  const {
+    signup,
+    signInWithGoogle,
+    signInWithGitHub,
+    signInWithKakao,
+    isAuthenticated,
+    user,
+  } = useAuth();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     document.title = "회원가입 | linku.me";
-    
+
     // Redirect if already logged in
     if (isAuthenticated) {
       navigate("/dashboard", { replace: true });
@@ -31,12 +40,12 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== passwordConfirm) {
       toast.error("비밀번호가 일치하지 않습니다.");
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
       await signup(email, password, nickname, () => {
@@ -50,27 +59,41 @@ export default function Signup() {
     }
   };
 
-  const handleSocialSignIn = async (provider: "google" | "github" | "kakao") => {
+  const handleSocialSignIn = async (
+    provider: "google" | "github" | "kakao",
+  ) => {
     try {
       setIsSocialLoading(provider);
-      const signInFunction = 
-        provider === "google" ? signInWithGoogle :
-        provider === "github" ? signInWithGitHub : signInWithKakao;
-      
+      const signInFunction =
+        provider === "google"
+          ? signInWithGoogle
+          : provider === "github"
+            ? signInWithGitHub
+            : signInWithKakao;
+
       await signInFunction(() => {
-        toast.success(`${provider === "kakao" ? "카카오" : 
-                      provider === "github" ? "GitHub" : "Google"} 로그인 성공!`);
+        toast.success(
+          `${
+            provider === "kakao"
+              ? "카카오"
+              : provider === "github"
+                ? "GitHub"
+                : "Google"
+          } 로그인 성공!`,
+        );
         navigate("/dashboard", { replace: true });
       });
     } catch (error: any) {
-      toast.error(error.message || `${provider} 로그인 중 오류가 발생했습니다.`);
+      toast.error(
+        error.message || `${provider} 로그인 중 오류가 발생했습니다.`,
+      );
     } finally {
       setIsSocialLoading(null);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -93,7 +116,7 @@ export default function Signup() {
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-2 bg-white dark:bg-white"
               onClick={() => handleSocialSignIn("google")}
               disabled={!!isSocialLoading}
             >
@@ -110,7 +133,7 @@ export default function Signup() {
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-2 bg-white dark:bg-white"
               onClick={() => handleSocialSignIn("github")}
               disabled={!!isSocialLoading}
             >
@@ -127,7 +150,7 @@ export default function Signup() {
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 bg-[#FEE500] text-black hover:bg-[#FEE500]/90 hover:text-black"
+              className="w-full flex items-center justify-center gap-2 bg-[#FEE500] text-black hover:bg-[#FEE500]/90 hover:text-black dark:bg-[#FEE500]"
               onClick={() => handleSocialSignIn("kakao")}
               disabled={!!isSocialLoading}
             >
@@ -147,7 +170,9 @@ export default function Signup() {
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">또는</span>
+              <span className="px-2 bg-white dark:bg-white text-gray-500">
+                또는
+              </span>
             </div>
           </div>
         </div>
@@ -163,7 +188,7 @@ export default function Signup() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1"
+                className="mt-1 bg-white dark:bg-white"
               />
             </div>
 
@@ -176,7 +201,7 @@ export default function Signup() {
                 required
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                className="mt-1"
+                className="mt-1 bg-white dark:bg-white"
               />
             </div>
 
@@ -189,7 +214,7 @@ export default function Signup() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1"
+                className="mt-1 bg-white dark:bg-white"
               />
             </div>
 
@@ -202,17 +227,13 @@ export default function Signup() {
                 required
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
-                className="mt-1"
+                className="mt-1 bg-white dark:bg-white"
               />
             </div>
           </div>
 
           <div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
