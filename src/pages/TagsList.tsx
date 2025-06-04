@@ -10,12 +10,9 @@ export default function TagsList() {
   
   // Calculate how many bookmarks use each tag
   const tagCounts = tags.map(tag => {
-    const count = bookmarks.filter(bookmark => 
-      bookmark.tags.some(t => t.id === tag.id)
-    ).length;
-    
-    return { ...tag, count };
-  }).sort((a, b) => b.count - a.count);
+    const count = bookmarks.filter(bookmark => bookmark.tags.includes(tag.name)).length
+    return { ...tag, count }
+  }).sort((a, b) => b.count - a.count)
   
   useEffect(() => {
     document.title = "태그 | linku.me";
@@ -57,7 +54,6 @@ export default function TagsList() {
                 key={tag.id}
                 to={`/tags/${tag.id}`}
                 className="flex flex-col justify-between bg-card border rounded-lg p-4 hover:shadow transition-shadow"
-                style={{ borderLeftColor: tag.color, borderLeftWidth: '4px' }}
               >
                 <div className="font-medium">#{tag.name}</div>
                 <div className="text-sm text-muted-foreground">

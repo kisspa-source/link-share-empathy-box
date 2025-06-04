@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/contexts/AuthContext";
-import { profileApi, supabase } from "@/lib/supabase";
+import { profileApi, supabase, uploadAvatar } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 export default function Profile() {
   const { user, logout, setUser } = useAuth();
   const [nickname, setNickname] = useState(user?.nickname || "");
+  const fileRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     document.title = "프로필 | linku.me";
@@ -31,6 +32,25 @@ export default function Profile() {
     } catch (error) {
       console.error(error);
       toast.error("프로필 업데이트 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleAvatarButton = () => {
+    fileRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    try {
+      const url = await uploadAvatar(user.id, file);
+      await profileApi.update(user.id, { avatar_url: url });
+      await supabase.auth.updateUser({ data: { avatar_url: url } });
+      setUser({ ...user, avatarUrl: url });
+      toast.success('프로필 이미지가 업데이트되었습니다.');
+    } catch (error) {
+      console.error(error);
+      toast.error('이미지 업로드 중 오류가 발생했습니다.');
     }
   };
   
@@ -76,9 +96,16 @@ export default function Profile() {
                       <AvatarImage src={user.avatarUrl} alt={user.nickname} />
                       <AvatarFallback>{user.nickname[0]}</AvatarFallback>
                     </Avatar>
-                    <Button type="button" variant="outline">
+                    <Button type="button" variant="outline" onClick={handleAvatarButton}>
                       이미지 변경
                     </Button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileRef}
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
                   </div>
                   
                   <div className="grid gap-2">

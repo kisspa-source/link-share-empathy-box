@@ -2,10 +2,7 @@ import { createContext, useContext, useState, ReactNode, useCallback, useEffect 
 import { Bookmark, Collection, Folder, Tag, Category } from '../types/bookmark';
 import { toast } from "sonner";
 import { useAuth } from './AuthContext';
-import { supabase, bookmarkApi, collectionApi, directBookmarkInsert } from '../lib/supabase';
-
-// Mock data - 폴더와 태그만 임시로 사용
-import { mockFolders, mockTags } from '../data/mockData';
+import { supabase, bookmarkApi, collectionApi, directBookmarkInsert, folderApi } from '../lib/supabase';
 
 interface BookmarkContextType {
   bookmarks: Bookmark[];
@@ -115,9 +112,17 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
           setCollections([]);
         }
         
-        // 폴더와 태그는 임시로 모의 데이터 사용
-        setFolders(mockFolders);
-        setTags(mockTags);
+        if (user) {
+          const folderData = await folderApi.list(user.id)
+          const formattedFolders: Folder[] = (folderData || []).map(f => ({
+            id: f.id,
+            name: f.name,
+            bookmarkCount: bookmarks.filter(b => b.folder_id === f.id).length
+          }))
+          setFolders(formattedFolders)
+        } else {
+          setFolders([])
+        }
       } catch (error) {
         console.error('데이터 불러오기 오류:', error);
         toast.error('데이터를 불러오는 중 오류가 발생했습니다.');
@@ -129,79 +134,39 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     loadData();
   }, []);
 
-  // AI tagging simulation function
-  const simulateAITagging = (url: string): { tags: Tag[], tagNames: string[], category: Category } => {
-    // This would be an API call to your AI service in production
-    const domains = ['github.com', 'medium.com', 'naver.com', 'youtube.com', 'coupang.com'];
-    const domain = domains[Math.floor(Math.random() * domains.length)];
-    
-    const allTags = [...tags];
-    const selectedTags = allTags
-      .sort(() => 0.5 - Math.random())
-      .slice(0, Math.floor(Math.random() * 3) + 1);
-    
-    let category: Category;
-    if (url.includes('github') || url.includes('stackoverflow')) {
-      category = 'IT';
-    } else if (url.includes('news') || url.includes('blog')) {
-      category = 'News';
-    } else if (url.includes('shop') || url.includes('store')) {
-      category = 'Shopping';
-    } else if (url.includes('community') || url.includes('forum')) {
-      category = 'Community';
-    } else {
-      // Random category
-      const categories: Category[] = ['IT', 'News', 'Shopping', 'Community', 'Education', 'Entertainment', 'Finance', 'Health', 'Travel', 'Other'];
-      category = categories[Math.floor(Math.random() * categories.length)];
-    }
-    
-    // 태그 객체와 태그 이름 문자열 배열 모두 반환
-    const tagNames = selectedTags.map(tag => tag.name);
-    return { tags: selectedTags, tagNames, category };
-  };
-
-  // Fetch metadata simulation
+  // 메타데이터 가져오기
   const fetchMetadata = async (url: string) => {
-    // This would be a real API call to fetch metadata
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Generate a mock title based on URL
-    const domain = url.replace(/https?:\/\//, '').split('/')[0];
-    const pathSegments = url.split('/').filter(Boolean).slice(1);
-    const lastSegment = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1].replace(/-/g, ' ') : '';
-    
-    const randomTitles = [
-      'How to Build Modern Web Applications',
-      '10 Tips for Better Productivity',
-      'Getting Started with React and TypeScript',
-      'Machine Learning for Beginners',
-      'The Ultimate Guide to Korean Cooking',
-      'Best Practices for UI/UX Design',
-      'Understanding Blockchain Technology'
-    ];
-    
-    const title = lastSegment 
-      ? `${lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1)}`
-      : randomTitles[Math.floor(Math.random() * randomTitles.length)];
-    
-    const descriptions = [
-      'A comprehensive guide to building modern applications using the latest technologies.',
-      'Learn how to improve your workflow and get more done in less time.',
-      'This article covers the fundamentals of getting started with development.',
-      'An in-depth look at design principles and best practices.',
-      'Discover new techniques and tools to enhance your skills.'
-    ];
-    
-    const thumbnailUrl = `https://picsum.photos/seed/${encodeURIComponent(url)}/640/360`;
-    
-    return {
-      title: title,
-      description: descriptions[Math.floor(Math.random() * descriptions.length)],
-      favicon: `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
-      thumbnail: thumbnailUrl,
-      image: thumbnailUrl // image 속성 추가 (thumbnail과 동일한 URL 사용)
-    };
-  };
+    try {
+      const res = await fetch(`https://r.jina.ai/${url}`)
+      const html = await res.text()
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      const title = doc.querySelector('title')?.textContent || url
+      const description = doc.querySelector('meta[name="description"]')?.getAttribute('content') || ''
+      const keywords = doc.querySelector('meta[name="keywords"]')?.getAttribute('content') || ''
+      const keywordTags = keywords.split(',').map(k => k.trim()).filter(Boolean)
+      const domain = url.replace(/https?:\/\//, '').split('/')[0]
+
+      return {
+        title,
+        description,
+        favicon: `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
+        thumbnail: `https://picsum.photos/seed/${encodeURIComponent(url)}/640/360`,
+        tags: keywordTags
+      }
+    } catch (e) {
+      console.warn('metadata fetch failed', e)
+      return { title: url, description: '', favicon: '', thumbnail: '', tags: [] }
+    }
+  }
+
+  useEffect(() => {
+    const unique = Array.from(new Set(bookmarks.flatMap(b => b.tags)))
+    setTags(unique.map(t => ({ id: t, name: t })))
+    setFolders(prev => prev.map(f => ({
+      ...f,
+      bookmarkCount: bookmarks.filter(b => b.folder_id === f.id).length
+    })))
+  }, [bookmarks])
 
   const addBookmark = async (url: string, memo?: string, folderId?: string) => {
     setIsLoading(true);
@@ -226,9 +191,8 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       // 메타데이터 가져오기
       const metadata = await fetchMetadata(url);
       console.log('3. 메타데이터 결과:', metadata);
-      // AI 태깅 시ミュ레이션
-      const { tags: aiTags, tagNames, category } = simulateAITagging(url);
-      console.log('4. AI 태깅 결과:', aiTags, tagNames, category);
+      const tagNames = metadata.tags
+      const category: Category = 'Other'
       // 사용자 인증 확인 (RLS 정책 위반 방지)
       if (!user?.id) {
         console.error('사용자 인증 정보가 없습니다.');
@@ -248,9 +212,6 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       };
       
       console.log('5. 북마크 저장 데이터:', bookmarkData);
-      
-      // 디버깅용: 카테고리 정보는 별도 변수로 저장 (테이블에 없지만 프론트엔드에서 사용할 수 있도록)
-      const aiCategory = category;
       
       // 디버깅용 로그: 전송되는 데이터 형식 확인
       console.log('전송되는 tags 형식:', typeof bookmarkData.tags, bookmarkData.tags);
@@ -308,7 +269,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         folder_id: newBookmarkData.folder_id,
         // tags는 string[] 타입이어야 함
         tags: Array.isArray(newBookmarkData.tags) ? newBookmarkData.tags : [],
-        category: aiCategory as Category, // DB에서 가져온 값 대신 AI가 생성한 값 사용
+        category: category,
         saved_by: newBookmarkData.saved_by || 0,
         created_at: newBookmarkData.created_at,
         updated_at: newBookmarkData.updated_at
@@ -434,36 +395,38 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addFolder = async (name: string) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다');
+      return;
+    }
     try {
-      const newFolder: Folder = {
-        id: `folder-${Date.now()}`,
-        name,
-        bookmarkCount: 0
-      };
-      
-      setFolders(prev => [...prev, newFolder]);
-      toast.success('폴더가 생성되었습니다');
+      const created = await folderApi.create(name, user.id)
+      const newFolder: Folder = { id: created.id, name: created.name, bookmarkCount: 0 }
+      setFolders(prev => [...prev, newFolder])
+      toast.success('폴더가 생성되었습니다')
     } catch (error) {
-      console.error('Error adding folder:', error);
-      toast.error('폴더 생성에 실패했습니다');
+      console.error('Error adding folder:', error)
+      toast.error('폴더 생성에 실패했습니다')
     }
   };
 
   const deleteFolder = async (id: string) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다');
+      return;
+    }
     try {
-      setFolders(prev => prev.filter(folder => folder.id !== id));
-      
-      // Update bookmarks to remove folder reference
-      setBookmarks(prev => prev.map(bookmark => 
-        bookmark.folder_id === id 
-          ? { ...bookmark, folder_id: undefined } 
+      await folderApi.delete(id)
+      setFolders(prev => prev.filter(folder => folder.id !== id))
+      setBookmarks(prev => prev.map(bookmark =>
+        bookmark.folder_id === id
+          ? { ...bookmark, folder_id: undefined }
           : bookmark
-      ));
-      
-      toast.success('폴더가 삭제되었습니다');
+      ))
+      toast.success('폴더가 삭제되었습니다')
     } catch (error) {
-      console.error('Error deleting folder:', error);
-      toast.error('폴더 삭제에 실패했습니다');
+      console.error('Error deleting folder:', error)
+      toast.error('폴더 삭제에 실패했습니다')
     }
   };
 
