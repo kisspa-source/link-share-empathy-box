@@ -252,6 +252,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsAuthenticated(false);
       setUser(null);
       
+      // auth-token 삭제
+      localStorage.removeItem('auth-token');
+      // Supabase 자동 토큰 삭제 (sb-hgnojljsxnxpwenaacra-auth-token)
+      localStorage.removeItem('sb-hgnojljsxnxpwenaacra-auth-token');
+      
       // Supabase 로그아웃 실행
       const { error } = await supabase.auth.signOut();
       
@@ -336,6 +341,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signInWithGitHub,
     signInWithKakao,
   };
+
+  useEffect(() => {
+    console.log('[AuthProvider] isLoading:', isLoading, 'user:', userState);
+  }, [isLoading, userState]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -14,6 +14,7 @@ export default function Index() {
   const [tab, setTab] = useState("all");
   const [isClient, setIsClient] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     console.log('Index 컴포넌트 마운트됨', { isAuthenticated, isAuthLoading, user });
@@ -27,10 +28,29 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, []);
 
+  // 로그아웃 감지
+  useEffect(() => {
+    if (!isAuthenticated && isAuthLoading === false) {
+      setIsLoggingOut(false);
+    }
+  }, [isAuthenticated, isAuthLoading]);
+
   // 디버그용 로그
   useEffect(() => {
     console.log('인증 상태 업데이트:', { isAuthenticated, isAuthLoading, user });
   }, [isAuthenticated, isAuthLoading, user]);
+
+  // 로그아웃 중 표시
+  if (isLoggingOut) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">로그아웃 중입니다...</p>
+        </div>
+      </div>
+    );
+  }
 
   // 초기 로딩 또는 클라이언트 사이드 체크 중
   if (initialLoad || !isClient) {

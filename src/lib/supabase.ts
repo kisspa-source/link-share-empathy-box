@@ -359,6 +359,31 @@ export const profileApi = {
   }
 }
 
+export const directFolderInsert = async (folder: any, accessToken?: string) => {
+  try {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'apikey': supabaseAnonKey,
+      'Prefer': 'return=representation'
+    };
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    const response = await fetch(`${supabaseUrl}/rest/v1/folders`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(folder)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { data: null, error: data };
+    }
+    return { data: data[0], error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
 export const folderApi = {
   async list(userId: string) {
     const { data, error } = await supabase
@@ -372,21 +397,21 @@ export const folderApi = {
   },
 
   async create(name: string, userId: string, parentId?: string) {
+    // 인증 토큰 가져오기
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    const folder = { name, user_id: userId, parent_folder_id: parentId ?? null };
+    // 1. 직접 fetch로 시도
+    const directResult = await directFolderInsert(folder, accessToken);
+    if (directResult.data) return directResult.data;
+    // 2. 실패 시 SDK로 fallback
     const { data, error } = await supabase
       .from('folders')
-      .insert({ name, user_id: userId, parent_folder_id: parentId ?? null })
+      .insert(folder)
       .select()
-      .single()
-
-    if (error) throw error
-
-    await supabase.from('folder_permissions').insert({
-      folder_id: data.id,
-      user_id: userId,
-      permission_level: 'owner'
-    })
-
-    return data
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async update(id: string, updates: { name?: string; parent_folder_id?: string | null }) {
