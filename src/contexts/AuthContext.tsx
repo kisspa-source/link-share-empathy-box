@@ -110,78 +110,59 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 세션 처리 함수
   const handleSession = async (session: Session | null) => {
     console.log('handleSession 호출됨', { session });
-    
     if (!session?.user) {
       console.log('세션에 사용자 정보가 없습니다. 사용자 정보를 초기화합니다.');
       setUser(null);
       setIsLoading(false);
       return;
     }
-
     try {
       const userData = session.user;
-      console.log('세션 처리 시작:', { 
-        userId: userData.id, 
+      console.log('세션 처리 시작:', {
+        userId: userData.id,
         email: userData.email,
         metadata: userData.user_metadata,
         appMetadata: userData.app_metadata
       });
-      
-      // 사용자 정보 객체 미리 생성
-      const newUser = {
+      // 기본 사용자 정보 객체 생성
+      let newUser = {
         id: userData.id,
         email: userData.email || '',
-        nickname: userData.user_metadata?.name || 
-                 userData.user_metadata?.nickname || 
-                 userData.user_metadata?.full_name || 
+        nickname: userData.user_metadata?.name ||
+                 userData.user_metadata?.nickname ||
+                 userData.user_metadata?.full_name ||
                  userData.user_metadata?.user_name ||
                  '사용자',
         avatarUrl: userData.user_metadata?.avatar_url ||
                  userData.user_metadata?.picture,
         provider: userData.app_metadata?.provider || 'email'
       };
-      
-      console.log('기본 사용자 정보 생성:', newUser);
-      
-      // 사용자 정보 설정 - 프로필 정보 가져오기 전에 먼저 설정
-      setUser(newUser);
-      
-      // 인증 상태를 먼저 설정
-      setIsAuthenticated(true);
-      
-      // 로딩 상태 해제
-      setIsLoading(false);
-      
-      // 프로필 정보 가져오기 (배경에서 실행)
+      // Supabase profiles에서 닉네임/아바타 우선 적용
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userData.id)
           .single();
-          
         if (!error && profile) {
           console.log('프로필 정보 가져오기 성공:', profile);
-          
-          // 프로필 정보로 사용자 정보 업데이트
-          const updatedUser = {
+          newUser = {
             ...newUser,
             nickname: profile.nickname || newUser.nickname,
             avatarUrl: profile.avatar_url || newUser.avatarUrl
           };
-          
-          console.log('프로필 정보로 업데이트된 사용자 정보:', updatedUser);
-          setUser(updatedUser);
         } else {
           console.warn('프로필 조회 중 오류 발생 (계속 진행):', error);
         }
       } catch (error) {
         console.warn('프로필 요청 중 예외 발생 (계속 진행):', error);
       }
-      
+      // 최종 사용자 정보 한 번만 setUser
+      setUser(newUser);
+      setIsAuthenticated(true);
+      setIsLoading(false);
     } catch (error) {
       console.error('세션 처리 중 치명적 오류 발생:', error);
-      // 치명적 오류 시에도 사용자 정보 초기화
       setUser(null);
       setIsLoading(false);
     }
