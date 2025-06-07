@@ -35,7 +35,7 @@ export interface Bookmark {
   image_url: string | null
   created_at: string
   updated_at: string
-  tags: string
+  tags: string[]
 }
 
 export type Collection = {
