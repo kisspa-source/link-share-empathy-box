@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { fetchWithTimeout, handleError } from '@/lib/utils';
 import { Session, User as SupabaseUser, AuthError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
@@ -145,43 +146,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('[handleSession] 프로필 데이터 fetch 시도...');
       try {
-        console.log('[handleSession] profiles.select 호출 직전');
-        
-        const profileFetchPromise = supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userData.id)
-          .single();
-
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Profile fetch timeout after 5 seconds')), 5000)
+        const result = await fetchWithTimeout(
+          supabase.from('profiles').select('*').eq('id', userData.id).single(),
+          5000
         );
 
-        const { data: profile, error } = await Promise.race([
-          profileFetchPromise as unknown as Promise<any>,
-          timeoutPromise
-        ]);
-
-        console.log('[handleSession] profiles.select 호출 결과:', { data: profile, error });
-
-        if (error) {
-          if (error instanceof Error && error.message === 'Profile fetch timeout after 5 seconds') {
-            console.error('[handleSession] 프로필 fetch 시간 초과:', error.message);
-            // 시간 초과 시에는 에러를 던지지 않고 기본 사용자 정보로 계속 진행
-          } else {
-            console.warn('[handleSession] 프로필 fetch 실패/오류 (error object): ', error);
+        if (result) {
+          const { data: profile, error } = result as any;
+          console.log('[handleSession] profiles.select 호출 결과:', { data: profile, error });
+          if (error) {
+            handleError(error, 'profile fetch');
+          } else if (profile) {
+            newUser = {
+              ...newUser,
+              nickname: profile.nickname || newUser.nickname,
+              avatarUrl: profile.avatar_url || newUser.avatarUrl,
+            };
           }
-        } else if (profile) {
-          console.log('[handleSession] 프로필 fetch 성공:', profile);
-          newUser = {
-            ...newUser,
-            nickname: profile.nickname || newUser.nickname,
-            avatarUrl: profile.avatar_url || newUser.avatarUrl
-          };
+        } else {
+          console.warn('[handleSession] 프로필 fetch 결과 없음, 기본값 사용');
         }
       } catch (error) {
-        console.error('[handleSession] 프로필 fetch 예외 발생 (catch block): ', error);
-        // 여기로 들어오는 에러는 Promise.race에 의해 reject된 에러 (예: timeout) 또는 다른 예상치 못한 에러
+        handleError(error, 'profile fetch');
       }
       console.log('[handleSession] 프로필 데이터 처리 완료. 최종 newUser:', newUser);
 
