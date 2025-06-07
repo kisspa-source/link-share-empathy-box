@@ -254,7 +254,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         description: description || metadata.description || '',
         image_url: metadata.thumbnail || '', // image_url 컬럼 있음
         folder_id: folderId,
-        tags: JSON.stringify(tagNames),
+        tags: tagNames,
         // created_at, updated_at은 DB에서 자동 생성
       };
       
