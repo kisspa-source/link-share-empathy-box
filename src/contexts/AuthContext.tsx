@@ -116,6 +116,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
       return;
     }
+    if (userState && userState.id === session.user.id) {
+      console.log('[handleSession] 기존 사용자 상태가 존재합니다. 프로필 재요청을 생략합니다.');
+      setIsAuthenticated(true);
+      setIsLoading(false);
+      return;
+    }
     try {
       const userData = session.user;
       console.log('세션 처리 시작:', {
