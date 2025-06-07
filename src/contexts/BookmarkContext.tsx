@@ -85,6 +85,11 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       try {
         if (user) {
+          try {
+            await supabase.auth.refreshSession();
+          } catch (e) {
+            console.warn('세션 갱신 실패:', e);
+          }
           console.log('[BookmarkProvider] 북마크 Supabase API 호출 직전', user.id);
           const { data: bookmarksData, error: bookmarksError } = await supabase
             .from('bookmarks')
