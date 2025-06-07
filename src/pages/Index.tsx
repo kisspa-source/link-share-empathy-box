@@ -63,6 +63,7 @@ export default function Index() {
 
   // 인증 확인 중 로딩 표시 (최대 5초)
   if (isAuthLoading) {
+    console.log('isAuthLoading', isAuthLoading);
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -71,6 +72,7 @@ export default function Index() {
         </div>
       </div>
     );
+    console.log('isAuthLoading', isAuthLoading);
   }
 
   // 인증되지 않은 사용자에게 보여줄 UI

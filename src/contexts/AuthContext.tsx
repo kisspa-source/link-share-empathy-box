@@ -124,7 +124,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         metadata: userData.user_metadata,
         appMetadata: userData.app_metadata
       });
-      // 기본 사용자 정보 객체 생성
       let newUser = {
         id: userData.id,
         email: userData.email || '',
@@ -137,34 +136,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                  userData.user_metadata?.picture,
         provider: userData.app_metadata?.provider || 'email'
       };
-      // Supabase profiles에서 닉네임/아바타 우선 적용
+
+      console.log('[handleSession] 프로필 데이터 fetch 시도...');
       try {
-        const { data: profile, error } = await supabase
+        console.log('[handleSession] profiles.select 호출 직전');
+        
+        const profileFetchPromise = supabase
           .from('profiles')
           .select('*')
           .eq('id', userData.id)
           .single();
-        if (!error && profile) {
-          console.log('프로필 정보 가져오기 성공:', profile);
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Profile fetch timeout after 5 seconds')), 5000)
+        );
+
+        const { data: profile, error } = await Promise.race([
+          profileFetchPromise as unknown as Promise<any>,
+          timeoutPromise
+        ]);
+
+        console.log('[handleSession] profiles.select 호출 결과:', { data: profile, error });
+
+        if (error) {
+          if (error instanceof Error && error.message === 'Profile fetch timeout after 5 seconds') {
+            console.error('[handleSession] 프로필 fetch 시간 초과:', error.message);
+            // 시간 초과 시에는 에러를 던지지 않고 기본 사용자 정보로 계속 진행
+          } else {
+            console.warn('[handleSession] 프로필 fetch 실패/오류 (error object): ', error);
+          }
+        } else if (profile) {
+          console.log('[handleSession] 프로필 fetch 성공:', profile);
           newUser = {
             ...newUser,
             nickname: profile.nickname || newUser.nickname,
             avatarUrl: profile.avatar_url || newUser.avatarUrl
           };
-        } else {
-          console.warn('프로필 조회 중 오류 발생 (계속 진행):', error);
         }
       } catch (error) {
-        console.warn('프로필 요청 중 예외 발생 (계속 진행):', error);
+        console.error('[handleSession] 프로필 fetch 예외 발생 (catch block): ', error);
+        // 여기로 들어오는 에러는 Promise.race에 의해 reject된 에러 (예: timeout) 또는 다른 예상치 못한 에러
       }
-      // 최종 사용자 정보 한 번만 setUser
+      console.log('[handleSession] 프로필 데이터 처리 완료. 최종 newUser:', newUser);
+
       setUser(newUser);
       setIsAuthenticated(true);
-      setIsLoading(false);
     } catch (error) {
-      console.error('세션 처리 중 치명적 오류 발생:', error);
+      console.error('세션 처리 중 치명적 오류 발생 (outer catch): ', error);
       setUser(null);
+    } finally {
+      console.log('[AuthContext] handleSession: setIsLoading(false) 호출 직전 (finally)');
       setIsLoading(false);
+      console.log('[AuthContext] handleSession: setIsLoading(false) 호출 완료. 현재 isLoading:', false);
     }
   };
 

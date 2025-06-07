@@ -3,11 +3,27 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+console.log('[supabase.ts] 환경 변수 확인: SUPABASE_URL = ', supabaseUrl ? 'Loaded' : 'Not Loaded');
+console.log('[supabase.ts] 환경 변수 확인: SUPABASE_ANON_KEY = ', supabaseAnonKey ? 'Loaded' : 'Not Loaded');
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+  console.error('[supabase.ts] Supabase URL 또는 ANON Key가 설정되지 않았습니다.');
+  // 개발 환경에서만 alert를 띄워 사용자에게 문제 인지시킴
+  if (import.meta.env.DEV) {
+    alert('Supabase 환경 변수가 설정되지 않았습니다! .env 파일을 확인해주세요.');
+  }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: localStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
+
+console.log('[supabase.ts] Supabase 클라이언트 초기화 완료. 클라이언트 객체 유효성: ', !!supabase);
 
 // 타입 정의
 export interface Bookmark {
@@ -203,14 +219,24 @@ export const bookmarkApi = {
 
   // 북마크 목록 조회
   async list(userId: string) {
-    const { data, error } = await supabase
-      .from('bookmarks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data
+    console.log('[bookmarkApi.list] 요청 시작:', { userId });
+    try {
+      console.log('[bookmarkApi.list] supabase.from 호출 직전');
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      console.log('[bookmarkApi.list] supabase.from 호출 결과:', { data, error });
+      if (error) {
+        console.error('[bookmarkApi.list] Supabase 쿼리 에러:', error);
+        throw error;
+      }
+      return data;
+    } catch (e) {
+      console.error('[bookmarkApi.list] 함수 에러:', e);
+      throw e;
+    }
   },
 
   // 북마크 수정
@@ -285,19 +311,24 @@ export const collectionApi = {
 
   // 컬렉션 목록 조회
   async list(userId: string) {
-    const { data, error } = await supabase
-      .from('collections')
-      .select(`
-        *,
-        bookmarks:collection_bookmarks(
-          bookmark:bookmarks(*)
-        )
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data
+    console.log('[collectionApi.list] 요청 시작:', { userId });
+    try {
+      console.log('[collectionApi.list] supabase.from 호출 직전');
+      const { data, error } = await supabase
+        .from('collections')
+        .select('*, bookmarks(*)')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      console.log('[collectionApi.list] supabase.from 호출 결과:', { data, error });
+      if (error) {
+        console.error('[collectionApi.list] Supabase 쿼리 에러:', error);
+        throw error;
+      }
+      return data;
+    } catch (e) {
+      console.error('[collectionApi.list] 함수 에러:', e);
+      throw e;
+    }
   },
 
   // 컬렉션 수정
@@ -386,14 +417,24 @@ export const directFolderInsert = async (folder: any, accessToken?: string) => {
 
 export const folderApi = {
   async list(userId: string) {
-    const { data, error } = await supabase
-      .from('folders')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true })
-
-    if (error) throw error
-    return data
+    console.log('[folderApi.list] 요청 시작:', { userId });
+    try {
+      console.log('[folderApi.list] supabase.from 호출 직전');
+      const { data, error } = await supabase
+        .from('folders')
+        .select('id, name')
+        .eq('user_id', userId)
+        .order('name');
+      console.log('[folderApi.list] supabase.from 호출 결과:', { data, error });
+      if (error) {
+        console.error('[folderApi.list] Supabase 쿼리 에러:', error);
+        throw error;
+      }
+      return data;
+    } catch (e) {
+      console.error('[folderApi.list] 함수 에러:', e);
+      throw e;
+    }
   },
 
   async create(name: string, userId: string, parentId?: string) {
