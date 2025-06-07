@@ -10,6 +10,7 @@ import {
   directBookmarkDelete,
   folderApi
 } from '../lib/supabase';
+import { analyzeSite } from '../lib/analyze';
 
 interface BookmarkContextType {
   bookmarks: Bookmark[];
@@ -17,7 +18,7 @@ interface BookmarkContextType {
   folders: Folder[];
   tags: Tag[];
   isLoading: boolean;
-  addBookmark: (url: string, memo?: string, folderId?: string) => Promise<void>;
+  addBookmark: (url: string, description?: string, folderId?: string) => Promise<void>;
   deleteBookmark: (id: string) => Promise<void>;
   addCollection: (name: string, description: string, isPublic: boolean, bookmarkIds: string[]) => Promise<void>;
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
@@ -112,7 +113,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
               thumbnail: item.thumbnail,
               favicon: item.favicon,
               category: item.category as Category,
-              tags: Array.isArray(item.tags) ? item.tags : [],
+              tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : (Array.isArray(item.tags) ? item.tags : []),
               memo: item.memo,
               folder_id: item.folder_id,
               created_at: item.created_at,
@@ -194,7 +195,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     setTags(unique.map(t => ({ id: t, name: t })))
   }, [bookmarks])
 
-  const addBookmark = async (url: string, memo?: string, folderId?: string) => {
+  const addBookmark = async (url: string, description?: string, folderId?: string) => {
     setIsLoading(true);
     try {
       // 사용자 로그인 확인
@@ -235,7 +236,8 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         metadata = { title: url, description: '', favicon: '', thumbnail: '', tags: [] };
       }
       console.log('3. 메타데이터 결과:', metadata);
-      const tagNames = metadata.tags
+      const { tags: analyzedTags } = await analyzeSite(url);
+      const tagNames = analyzedTags;
       const category: Category = 'Other'
       // 사용자 인증 확인 (RLS 정책 위반 방지)
       if (!user?.id) {
@@ -249,9 +251,10 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         user_id: user.id, // 반드시 인증된 사용자 ID 포함
         url,
         title: metadata.title || url,
-        description: metadata.description || '',
+        description: description || metadata.description || '',
         image_url: metadata.thumbnail || '', // image_url 컬럼 있음
-        tags: tagNames, // text[] 컬럼이므로 string[] 그대로 전달
+        folder_id: folderId,
+        tags: JSON.stringify(tagNames),
         // created_at, updated_at은 DB에서 자동 생성
       };
       
@@ -312,7 +315,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         memo: newBookmarkData.memo,
         folder_id: newBookmarkData.folder_id,
         // tags는 string[] 타입이어야 함
-        tags: Array.isArray(newBookmarkData.tags) ? newBookmarkData.tags : [],
+        tags: typeof newBookmarkData.tags === 'string' ? JSON.parse(newBookmarkData.tags) : (Array.isArray(newBookmarkData.tags) ? newBookmarkData.tags : []),
         category: category,
         saved_by: newBookmarkData.saved_by || 0,
         created_at: newBookmarkData.created_at,
