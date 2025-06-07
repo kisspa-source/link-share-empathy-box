@@ -1,37 +1,72 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBookmarks } from "@/contexts/BookmarkContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ExternalLink } from "lucide-react";
+import { fetchProfile, fetchPublicCollections } from "@/lib/supabase";
 
 export default function UserProfile() {
   const { userId } = useParams();
   const { user } = useAuth();
-  const { getUserCollections } = useBookmarks();
-  
-  // Get collections that are public for this user
-  const collections = getUserCollections(userId || '1');
+
+  const [profileUser, setProfileUser] = useState<{ id: string; nickname: string; avatarUrl?: string } | null>(null);
+  const [collections, setCollections] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const isOwnProfile = user && user.id === userId;
-  
-  // Mock user data
-  const profileUser = {
-    id: userId || '1',
-    nickname: '링쿠미',
-    avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId || 'linkuplum'}`,
-    bio: 'AI와 웹 개발에 관심이 많은 개발자입니다. 유용한 자료를 모아서 공유합니다.',
-    social: [
-      { name: 'GitHub', url: 'https://github.com' },
-      { name: 'Twitter', url: 'https://twitter.com' },
-      { name: 'Blog', url: 'https://example.com' }
-    ]
-  };
+
+  useEffect(() => {
+    const load = async () => {
+      if (!userId) return;
+      try {
+        setIsLoading(true);
+        const profile = await fetchProfile(userId);
+        setProfileUser({
+          id: profile.id,
+          nickname: profile.nickname || '사용자',
+          avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+        });
+
+        const data = await fetchPublicCollections(userId);
+        const formatted = (data || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description || '',
+          isPublic: c.is_public,
+          userId: c.user_id,
+          userNickname: profile.nickname || '',
+          userAvatar: profile.avatar_url || undefined,
+          bookmarks: [],
+          createdAt: c.created_at,
+          updatedAt: c.updated_at,
+          coverImage: c.cover_image,
+          shareUrl: c.share_url || `linkbox.co.kr/c/${c.id}`
+        }));
+        setCollections(formatted);
+      } catch (e) {
+        console.error('Failed to load profile:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [userId]);
   
   useEffect(() => {
-    document.title = `${profileUser.nickname}의 linku.me`;
-  }, [profileUser.nickname]);
+    if (profileUser) {
+      document.title = `${profileUser.nickname}의 linku.me`;
+    }
+  }, [profileUser]);
+
+  if (isLoading || !profileUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/50">
@@ -41,35 +76,10 @@ export default function UserProfile() {
             <AvatarImage src={profileUser.avatarUrl} alt={profileUser.nickname} />
             <AvatarFallback>{profileUser.nickname[0]}</AvatarFallback>
           </Avatar>
-          
+
           <h1 className="text-3xl font-bold tracking-tight mb-2">
             {profileUser.nickname}의 linku.me
           </h1>
-          
-          <p className="text-muted-foreground max-w-lg mx-auto mb-6">
-            {profileUser.bio}
-          </p>
-          
-          <div className="flex justify-center gap-2 mb-6">
-            {profileUser.social.map((link, i) => (
-              <Button
-                key={i}
-                variant="outline"
-                size="sm"
-                asChild
-                className="gap-1"
-              >
-                <a 
-                  href={link.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                >
-                  {link.name}
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              </Button>
-            ))}
-          </div>
           
           {isOwnProfile && (
             <Button asChild variant="outline" className="mb-8">

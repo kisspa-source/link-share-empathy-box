@@ -390,6 +390,31 @@ export const profileApi = {
   }
 }
 
+// 프로필 조회
+export const fetchProfile = async (id: string) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, nickname, avatar_url')
+    .eq('id', id)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// 특정 사용자의 공개 컬렉션 조회
+export const fetchPublicCollections = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('collections')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
 export const directFolderInsert = async (folder: any, accessToken?: string) => {
   try {
     const headers: HeadersInit = {
