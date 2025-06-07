@@ -27,7 +27,7 @@ interface AddBookmarkDialogProps {
 export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps) {
   const { folders, addBookmark, isLoading } = useBookmarks();
   const [url, setUrl] = useState("");
-  const [memo, setMemo] = useState("");
+  const [description, setDescription] = useState("");
   const [folderId, setFolderId] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
 
@@ -36,9 +36,9 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
     
     setIsAdding(true);
     try {
-      await addBookmark(url, memo, folderId || undefined);
+      await addBookmark(url, description, folderId || undefined);
       setUrl("");
-      setMemo("");
+      setDescription("");
       setFolderId("");
       onOpenChange(false);
     } finally {
@@ -84,9 +84,9 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
           
           <div>
             <Textarea
-              placeholder="메모 (선택사항)"
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
+              placeholder="설명 (선택사항)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               className="min-h-[80px]"
               disabled={isAdding}
             />
