@@ -62,7 +62,46 @@ const AuthCallback = () => {
         throw new Error(`OAuth 인증 오류: ${urlError}`);
       }
       
+      // 1. code가 없고, 해시에서 access_token이 있는 경우 처리 추가
       if (!code) {
+        // 해시 파라미터 파싱
+        const hash = window.location.hash;
+        const hashParams = {};
+        if (hash && hash.length > 1) {
+          hash.substring(1).split('&').forEach((kv) => {
+            const [key, value] = kv.split('=');
+            hashParams[key] = value;
+          });
+        }
+        const accessToken = hashParams['access_token'];
+        const refreshToken = hashParams['refresh_token'];
+        const tokenType = hashParams['token_type'];
+        const expiresIn = hashParams['expires_in'];
+        
+        if (accessToken && refreshToken && tokenType) {
+          // Supabase 세션 객체 형태에 맞게 구성
+          const sessionData = {
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            token_type: tokenType,
+            expires_in: Number(expiresIn) || 3600,
+          };
+          console.log('해시에서 access_token 감지, setSession 시도:', sessionData);
+          const { data: session, error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (setSessionError) {
+            throw new Error('토큰 세션 설정 실패: ' + setSessionError.message);
+          }
+          if (session?.session?.user) {
+            console.log('OAuth 해시 인증 성공:', session.session.user.email);
+            await handleSuccessfulAuth(session.session);
+            return;
+          } else {
+            throw new Error('세션 정보를 가져오지 못했습니다. (해시 인증)');
+          }
+        }
         // 코드가 없는 경우 현재 세션 확인
         console.log('코드가 없습니다. 현재 세션을 확인합니다.');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();

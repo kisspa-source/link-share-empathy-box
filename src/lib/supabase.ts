@@ -316,7 +316,7 @@ export const collectionApi = {
       console.log('[collectionApi.list] supabase.from 호출 직전');
       const { data, error } = await supabase
         .from('collections')
-        .select('*, bookmarks(*)')
+        .select('*, bookmarks(*), profiles!user_id(nickname,avatar_url)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       console.log('[collectionApi.list] supabase.from 호출 결과:', { data, error });
@@ -375,8 +375,43 @@ export const collectionApi = {
       .eq('bookmark_id', bookmarkId)
     
     if (error) throw error
-  }
-} 
+  },
+
+  // 단일 컬렉션 조회
+  async get(id: string) {
+    try {
+      const { data, error } = await supabase
+        .from('collections')
+        .select('*, bookmarks(*), profiles!user_id(nickname,avatar_url)')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.error('[collectionApi.get] 컬렉션 조회 오류:', e);
+      throw e;
+    }
+  },
+
+  // 공개 컬렉션 목록 조회
+  async listPublic() {
+    try {
+      const { data, error } = await supabase
+        .from('collections')
+        .select('*, bookmarks(*), profiles!user_id(nickname,avatar_url)')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.error('[collectionApi.listPublic] 공개 컬렉션 조회 오류:', e);
+      throw e;
+    }
+  },
+}
+
 export const profileApi = {
   async update(id: string, updates: { nickname?: string; avatar_url?: string }) {
     const { data, error } = await supabase

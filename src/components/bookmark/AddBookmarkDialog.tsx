@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useBookmarks } from "@/contexts/BookmarkContext";
 import {
@@ -30,16 +29,41 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
   const [description, setDescription] = useState("");
   const [folderId, setFolderId] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [isComposing, setIsComposing] = useState(false);
+
+  const addTag = () => {
+    const newTag = tagInput.trim();
+    if (newTag && !tags.includes(newTag)) {
+      setTags([...tags, newTag]);
+    }
+    setTagInput("");
+  };
+
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (isComposing) return;
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addTag();
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setTags(tags.filter(t => t !== tag));
+  };
 
   const handleSubmit = async () => {
     if (!url.trim()) return;
     
     setIsAdding(true);
     try {
-      await addBookmark(url, description, folderId || undefined);
+      await addBookmark(url, description, folderId || undefined, tags);
       setUrl("");
       setDescription("");
       setFolderId("");
+      setTags([]);
+      setTagInput("");
       onOpenChange(false);
     } finally {
       setIsAdding(false);
@@ -94,6 +118,39 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
           
           <div className="text-sm text-muted-foreground">
             추가하면 AI가 자동으로 태그와 카테고리를 생성합니다.
+          </div>
+          <div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {tags.map(tag => (
+                <span key={tag} className="inline-flex items-center px-2 py-1 bg-accent rounded text-sm">
+                  #{tag}
+                  <button
+                    type="button"
+                    className="ml-1 text-muted-foreground hover:text-red-500"
+                    onClick={() => removeTag(tag)}
+                    tabIndex={-1}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="태그 입력 후 Enter 또는 콤마(,)"
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={handleTagInputKeyDown}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={() => setIsComposing(false)}
+                disabled={isAdding}
+                className="flex-1"
+              />
+              <Button type="button" variant="secondary" onClick={addTag} disabled={!tagInput.trim() || isAdding}>
+                추가
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">입력한 태그는 콤마(,)로 구분되어 저장됩니다.</div>
           </div>
         </div>
         <div className="flex justify-end gap-2">

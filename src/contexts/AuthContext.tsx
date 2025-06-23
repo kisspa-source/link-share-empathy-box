@@ -16,6 +16,7 @@ export interface User {
 // 인증 컨텍스트 타입
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   setUser: (user: User | null) => void;
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [userState, setUserState] = useState<User | null>(null);
+  const [sessionState, setSessionState] = useState<Session | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
@@ -62,14 +64,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('세션 확인:', { hasSession: !!session, user: session?.user });
         
         if (session?.user) {
+          setSessionState(session);
           await handleSession(session);
         } else if (isMounted) {
           // 세션이 없는 경우 명시적으로 사용자 상태 초기화
+          setSessionState(null);
           setUser(null);
         }
       } catch (error) {
         console.error('인증 확인 중 오류 발생:', error);
         if (isMounted) {
+          setSessionState(null);
           setUser(null);
         }
       } finally {
@@ -89,14 +94,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('인증 상태 변경 감지:', event, { hasSession: !!session });
         
         if (event === 'SIGNED_OUT' || !session) {
+          setSessionState(null);
           setUser(null);
           return;
         }
         
         try {
+          setSessionState(session);
           await handleSession(session);
         } catch (error) {
           console.error('세션 처리 중 오류 발생:', error);
+          setSessionState(null);
           setUser(null);
         }
       }
@@ -326,6 +334,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const value = {
     user: userState,
+    session: sessionState,
     isAuthenticated,
     isLoading,
     setUser,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useBookmarks } from "@/contexts/BookmarkContext";
+import { useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/layout/Layout";
 import BookmarkGrid from "@/components/bookmark/BookmarkGrid";
 import { Button } from "@/components/ui/button";
@@ -8,12 +9,65 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Share2, Globe, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { collectionApi } from "@/lib/supabase";
+import type { Collection } from "@/types/bookmark";
 
 export default function CollectionView() {
   const { collectionId } = useParams();
-  const { collections, getCollection } = useBookmarks();
+  const { user } = useAuth();
+  const [collection, setCollection] = useState<Collection | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const collection = getCollection(collectionId || '');
+  // 컬렉션 데이터 로드
+  useEffect(() => {
+    const loadCollection = async () => {
+      if (!collectionId) return;
+      
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await collectionApi.get(collectionId);
+        
+        // 비로그인 상태에서는 공개 컬렉션만 접근 가능
+        if (!user && !data.is_public) {
+          setError("비공개 컬렉션입니다.");
+          setCollection(null);
+          return;
+        }
+        
+        // 로그인 상태에서는 본인 컬렉션만 접근 가능 (비공개 컬렉션의 경우)
+        if (!data.is_public && user?.id !== data.user_id) {
+          setError("접근 권한이 없는 컬렉션입니다.");
+          setCollection(null);
+          return;
+        }
+
+        setCollection({
+          id: data.id,
+          name: data.name,
+          description: data.description || "",
+          isPublic: data.is_public,
+          userId: data.user_id,
+          userNickname: data.profiles?.nickname || "Unknown",
+          userAvatar: data.profiles?.avatar_url,
+          bookmarks: Array.isArray(data.bookmarks) ? data.bookmarks : [],
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+          shareUrl: data.share_url || `linkbox.co.kr/c/${data.id}`,
+          coverImage: data.cover_image
+        });
+      } catch (e) {
+        console.error("컬렉션 로드 오류:", e);
+        setError("컬렉션을 불러오는 중 오류가 발생했습니다.");
+        setCollection(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCollection();
+  }, [collectionId, user]);
 
   useEffect(() => {
     document.title = collection 
@@ -31,13 +85,26 @@ export default function CollectionView() {
     toast.success("공유 URL이 클립보드에 복사되었습니다");
   };
   
-  if (!collection) {
+  if (isLoading) {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
-          <h1 className="text-2xl font-bold mb-4">컬렉션을 찾을 수 없습니다</h1>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+          <p className="mt-4 text-muted-foreground">컬렉션을 불러오는 중...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error || !collection) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <h1 className="text-2xl font-bold mb-4">
+            {error || "컬렉션을 찾을 수 없습니다"}
+          </h1>
           <p className="text-muted-foreground mb-8">
-            요청한 컬렉션이 존재하지 않거나 접근 권한이 없습니다.
+            {!error && "요청한 컬렉션이 존재하지 않거나 접근 권한이 없습니다."}
           </p>
           <Button asChild>
             <Link to="/collections">컬렉션 목록으로</Link>

@@ -1,4 +1,3 @@
-
 import { Collection } from "@/types/bookmark";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -22,7 +21,7 @@ export default function CollectionCard({ collection, showToggleVisibility = fals
     e.preventDefault();
     e.stopPropagation();
     
-    await toggleCollectionPublic(collection.id);
+    await toggleCollectionPublic(collection.id, !collection.isPublic);
   };
   
   const handleCopyShareUrl = (e: React.MouseEvent) => {
@@ -56,9 +55,9 @@ export default function CollectionCard({ collection, showToggleVisibility = fals
           
           <Badge 
             className="absolute top-2 right-2"
-            variant={collection.isPublic ? "default" : "secondary"}
+            variant={(collection.isPublic ?? collection.is_public) ? "default" : "secondary"}
           >
-            {collection.isPublic ? "공개" : "비공개"}
+            {(collection.isPublic ?? collection.is_public) ? "공개" : "비공개"}
           </Badge>
         </div>
         
@@ -70,10 +69,10 @@ export default function CollectionCard({ collection, showToggleVisibility = fals
           
           <div className="flex items-center mt-4">
             <Avatar className="h-6 w-6 mr-2">
-              <AvatarImage src={collection.userAvatar} alt={collection.userNickname} />
-              <AvatarFallback>{collection.userNickname[0]}</AvatarFallback>
+              <AvatarImage src={collection.userAvatar ?? undefined} alt={collection.userNickname ?? "닉네임 없음"} />
+              <AvatarFallback>{collection.userNickname?.[0] ?? "?"}</AvatarFallback>
             </Avatar>
-            <span className="text-sm">{collection.userNickname}</span>
+            <span className="text-sm">{collection.userNickname ?? "알 수 없음"}</span>
           </div>
         </CardContent>
         
@@ -112,17 +111,18 @@ export default function CollectionCard({ collection, showToggleVisibility = fals
         )}
         
         {collection.isPublic && !showToggleVisibility && (
-          <CardFooter className="p-4 pt-0 flex justify-end border-t mt-2">
+          <CardFooter className="p-4 pt-0 flex flex-col items-end border-t mt-2">
             <a
               href={`https://${collection.shareUrl}`}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-sm text-muted-foreground hover:text-foreground flex items-center"
+              className="text-sm text-muted-foreground hover:text-foreground flex items-center mb-1"
             >
               <ExternalLink className="h-3.5 w-3.5 mr-1" />
               <span>공유 페이지 보기</span>
             </a>
+            <span className="text-xs text-muted-foreground">만든 사람: {collection.userNickname ?? "알 수 없음"}</span>
           </CardFooter>
         )}
       </Link>

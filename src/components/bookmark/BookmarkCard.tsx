@@ -35,11 +35,15 @@ interface BookmarkCardProps {
 export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
   const { deleteBookmark } = useBookmarks();
   const [showUserDialog, setShowUserDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleDelete = () => {
-    if (window.confirm("북마크를 삭제하시겠습니까?")) {
-      deleteBookmark(bookmark.id);
-    }
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    deleteBookmark(bookmark.id);
+    setShowDeleteDialog(false);
   };
 
   const copyToClipboard = () => {
@@ -48,7 +52,8 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
   };
 
   // Generate random users who saved this bookmark (for MVP)
-  const randomUsers = Array.from({ length: Math.min(6, bookmark.savedBy) }, (_, i) => ({
+  const savedCount = bookmark.saved_by || 0;
+  const randomUsers = Array.from({ length: Math.min(6, savedCount) }, (_, i) => ({
     id: `user-${i}`,
     nickname: ['민준', '지우', '현지', '승민', '영희', '도현', '지수', '서연', '준호'][Math.floor(Math.random() * 9)],
     avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
@@ -124,18 +129,31 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
             
             {bookmark.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-3">
-                {bookmark.tags.map(tag => (
-                  <span 
-                    key={tag.id}
-                    className="tag-badge"
-                    style={{ 
-                      backgroundColor: `${tag.color}20`, 
-                      color: tag.color 
-                    }}
-                  >
-                    #{tag.name}
-                  </span>
-                ))}
+                {bookmark.tags.map((tag, idx) => {
+                  if (typeof tag === 'string') {
+                    return (
+                      <span key={tag} className="tag-badge">#{tag}</span>
+                    );
+                  } else if (typeof tag === 'object' && tag !== null) {
+                    const tagId = (typeof tag === 'object' && tag !== null && 'id' in tag) ? (tag as any).id : idx;
+                    const tagColor = (typeof tag === 'object' && tag !== null && 'color' in tag) ? (tag as any).color : undefined;
+                    const tagName = (typeof tag === 'object' && tag !== null && 'name' in tag) ? (tag as any).name : tagId;
+                    return (
+                      <span
+                        key={tagId}
+                        className="tag-badge"
+                        style={{
+                          backgroundColor: tagColor ? `${tagColor}20` : undefined,
+                          color: tagColor || undefined
+                        }}
+                      >
+                        #{tagName}
+                      </span>
+                    );
+                  } else {
+                    return null;
+                  }
+                })}
               </div>
             )}
             
@@ -155,7 +173,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
             onClick={() => setShowUserDialog(true)}
           >
             <Users className="h-3.5 w-3.5 mr-1" />
-            <span>{bookmark.savedBy}명</span>
+            <span>{savedCount}명</span>
           </Button>
           
           <div className="flex items-center gap-2">
@@ -197,7 +215,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground mb-4">
-              총 {bookmark.savedBy}명이 이 북마크를 저장했습니다.
+              총 {savedCount}명이 이 북마크를 저장했습니다.
             </p>
             
             <div className="space-y-2">
@@ -210,11 +228,30 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
                 </div>
               ))}
               
-              {bookmark.savedBy > 6 && (
+              {savedCount > 6 && (
                 <p className="text-sm text-muted-foreground text-center pt-2">
-                  외 {bookmark.savedBy - 6}명...
+                  외 {savedCount - 6}명...
                 </p>
               )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>북마크 삭제</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-base text-muted-foreground mb-4">정말로 이 북마크를 삭제하시겠습니까?</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                취소
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                삭제
+              </Button>
             </div>
           </div>
         </DialogContent>

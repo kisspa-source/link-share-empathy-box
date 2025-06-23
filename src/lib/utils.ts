@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { toast } from "sonner";
+import { PostgrestBuilder } from "@supabase/postgrest-js";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -8,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 
 // Fetch helper with timeout support
 export async function fetchWithTimeout<T>(
-  promise: Promise<T>,
+  promise: Promise<T> | PostgrestBuilder<any, any>,
   timeoutMs: number
 ): Promise<T | null> {
   const timeout = new Promise<never>((_, reject) => {

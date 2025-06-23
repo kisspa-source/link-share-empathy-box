@@ -23,6 +23,7 @@ import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
 import SearchPage from "./pages/SearchPage";
 import NotFound from "./pages/NotFound";
+import CollectionCreate from "./pages/CollectionCreate";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/folder/:folderId" element={<FolderView />} />
                 <Route path="/collections" element={<CollectionsList />} />
+                <Route path="/collections/new" element={<CollectionCreate />} />
                 <Route path="/collections/:collectionId" element={<CollectionView />} />
                 <Route path="/tags" element={<TagsList />} />
                 <Route path="/tags/:tagId" element={<TagDetail />} />
