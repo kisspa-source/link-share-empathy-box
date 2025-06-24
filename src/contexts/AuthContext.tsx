@@ -298,13 +298,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
+      console.log('Current Redirect URL:', import.meta.env.VITE_AUTH_REDIRECT_TO);
+
       // 리다이렉트 후 돌아올 경로 저장
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: import.meta.env.VITE_AUTH_REDIRECT_TO,
         },
       });
       

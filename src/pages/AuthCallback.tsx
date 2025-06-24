@@ -78,7 +78,7 @@ const AuthCallback = () => {
         const tokenType = hashParams['token_type'];
         const expiresIn = hashParams['expires_in'];
         
-        if (accessToken && refreshToken && tokenType) {
+        if (accessToken) {
           // Supabase 세션 객체 형태에 맞게 구성
           const sessionData = {
             access_token: accessToken,
