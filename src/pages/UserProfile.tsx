@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ExternalLink } from "lucide-react";
 import { fetchProfile, fetchPublicCollections } from "@/lib/supabase";
+import { generateShareUrl } from "@/lib/utils";
 
 export default function UserProfile() {
   const { userId } = useParams();
@@ -42,7 +43,7 @@ export default function UserProfile() {
           createdAt: c.created_at,
           updatedAt: c.updated_at,
           coverImage: c.cover_image,
-          shareUrl: c.share_url || `linkbox.co.kr/c/${c.id}`
+          shareUrl: generateShareUrl(c.id)
         }));
         setCollections(formatted);
       } catch (e) {
@@ -100,7 +101,7 @@ export default function UserProfile() {
               <Card key={collection.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <a 
-                    href={`https://${collection.shareUrl}`}
+                    href={`${window.location.origin}/c/${collection.id}`}
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="block"

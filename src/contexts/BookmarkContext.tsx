@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { Bookmark, Collection, Folder, Tag, Category } from '../types/bookmark';
 import { toast } from "sonner";
 import { useAuth } from './AuthContext';
@@ -11,6 +11,7 @@ import {
   folderApi
 } from '../lib/supabase';
 import { analyzeSite } from '../lib/analyze';
+import { generateShareUrl } from '../lib/utils';
 
 interface BookmarkContextType {
   bookmarks: Bookmark[];
@@ -41,131 +42,172 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // 최초 1회만 자동 조회, 명시적 새로고침 지원
-  const [hasLoaded, setHasLoaded] = useState(false);
+  
+  // 중복 실행 방지를 위한 ref들
+  const isLoadingData = useRef(false);
+  const lastLoadedUserId = useRef<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const refreshData = () => setRefreshKey(k => k + 1);
+  
+  const refreshData = useCallback(() => {
+    setRefreshKey(k => k + 1);
+    lastLoadedUserId.current = null; // 강제 새로고침 시 사용자 ID 초기화
+  }, []);
 
-  // 1. 폴더 목록 불러오기
+  // 병렬 데이터 로딩 최적화
   useEffect(() => {
-    console.log('[BookmarkProvider] 폴더 useEffect 진입', { isAuthLoading, user });
-    if (isAuthLoading) return;
-    const loadFolders = async () => {
-      if (user) {
-        try {
-          console.log('[BookmarkProvider] 폴더 Supabase API 호출 직전', user.id);
-          const folderData = await folderApi.list(user.id);
-          console.log('[BookmarkProvider] 폴더 Supabase API 호출 결과', folderData);
-          const formattedFolders: Folder[] = (folderData || []).map(f => ({
+    console.log('[BookmarkProvider] 데이터 로딩 useEffect 진입', { isAuthLoading, user: !!user });
+    
+    // 인증 로딩 중이거나 이미 데이터 로딩 중인 경우 스킵
+    if (isAuthLoading || isLoadingData.current) {
+      return;
+    }
+    
+    // 사용자가 없는 경우 데이터 초기화
+    if (!user) {
+      console.log('[BookmarkProvider] 사용자 없음, 데이터 초기화');
+      setBookmarks([]);
+      setCollections([]);
+      setFolders([]);
+      setIsLoading(false);
+      lastLoadedUserId.current = null;
+      return;
+    }
+    
+    // 동일한 사용자의 데이터가 이미 로드되었고 강제 새로고침이 아닌 경우 스킵
+    if (lastLoadedUserId.current === user.id && refreshKey === 0) {
+      console.log('[BookmarkProvider] 이미 로드된 사용자 데이터, 로딩 스킵');
+      return;
+    }
+
+    const loadAllData = async () => {
+      if (isLoadingData.current) return; // 이중 실행 방지
+      
+      isLoadingData.current = true;
+      setIsLoading(true);
+      console.log('[BookmarkProvider] 모든 데이터 병렬 로딩 시작', user.id);
+      
+      try {
+        // 세션 갱신 제거 - 불필요한 네트워크 요청 방지
+        console.log('[BookmarkProvider] 세션 갱신 생략 (성능 최적화)');
+
+        // 모든 데이터를 병렬로 로딩 - Promise.allSettled 사용으로 한 요청 실패가 전체에 영향 주지 않음
+        const [foldersResult, bookmarksResult, collectionsResult] = await Promise.allSettled([
+          folderApi.list(user.id),
+          supabase
+            .from('bookmarks')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false }),
+          collectionApi.list(user.id)
+        ]);
+
+        // 폴더 데이터 처리
+        if (foldersResult.status === 'fulfilled') {
+          console.log('[BookmarkProvider] 폴더 데이터 로딩 성공:', foldersResult.value?.length || 0, '개');
+          const formattedFolders: Folder[] = (foldersResult.value || []).map(f => ({
             id: f.id,
             name: f.name,
-            bookmarkCount: 0,
+            bookmarkCount: 0, // 북마크 로딩 후 업데이트
           }));
           setFolders(formattedFolders);
-        } catch (error) {
-          console.error('폴더 불러오기 오류:', error);
+        } else {
+          console.error('폴더 로딩 실패:', foldersResult.reason);
           toast.error('폴더를 불러오는 중 오류가 발생했습니다.');
         }
-      } else {
-        setFolders([]);
+
+        // 북마크 데이터 처리
+        if (bookmarksResult.status === 'fulfilled') {
+          const { data: bookmarksData, error: bookmarksError } = bookmarksResult.value;
+          console.log('[BookmarkProvider] 북마크 데이터 로딩 결과:', { 
+            count: bookmarksData?.length || 0, 
+            hasError: !!bookmarksError 
+          });
+          
+          if (bookmarksError) {
+            console.error('북마크 불러오기 오류:', bookmarksError);
+            toast.error('북마크를 불러오는 중 오류가 발생했습니다.');
+          } else {
+            const formattedBookmarks: Bookmark[] = (bookmarksData || []).map(item => ({
+              id: item.id,
+              user_id: item.user_id,
+              url: item.url,
+              title: item.title || '',
+              description: item.description || '',
+              image_url: item.image_url,
+              thumbnail: item.thumbnail,
+              favicon: item.favicon,
+              category: item.category as Category,
+              tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : (Array.isArray(item.tags) ? item.tags : []),
+              memo: item.memo,
+              folder_id: item.folder_id,
+              created_at: item.created_at,
+              updated_at: item.updated_at,
+              saved_by: item.saved_by
+            }));
+            setBookmarks(formattedBookmarks);
+            
+            // 폴더별 북마크 개수 업데이트 - 최적화된 방식
+            setFolders(prev =>
+              prev.map(f => ({
+                ...f,
+                bookmarkCount: formattedBookmarks.filter(b => b.folder_id === f.id).length,
+              }))
+            );
+          }
+        } else {
+          console.error('북마크 로딩 실패:', bookmarksResult.reason);
+          toast.error('북마크를 불러오는 중 오류가 발생했습니다.');
+        }
+
+        // 컬렉션 데이터 처리
+        if (collectionsResult.status === 'fulfilled') {
+          console.log('[BookmarkProvider] 컬렉션 데이터 로딩 성공:', collectionsResult.value?.length || 0, '개');
+          const formattedCollections: Collection[] = (collectionsResult.value || []).map(item => ({
+            id: item.id,
+            name: item.name,
+            description: item.description || '',
+            isPublic: item.is_public,
+            userId: item.user_id,
+            userNickname: item.profiles?.nickname || user.nickname,
+            userAvatar: item.profiles?.avatar_url || user.avatarUrl,
+            bookmarks: Array.isArray(item.bookmarks) ? item.bookmarks : [],
+            createdAt: item.created_at,
+            updatedAt: item.updated_at,
+            shareUrl: generateShareUrl(item.id),
+            coverImage: item.cover_image
+          }));
+          setCollections(formattedCollections);
+        } else {
+          console.error('컬렉션 로딩 실패:', collectionsResult.reason);
+          toast.error('컬렉션을 불러오는 중 오류가 발생했습니다.');
+        }
+
+        console.log('[BookmarkProvider] 모든 데이터 병렬 로딩 완료');
+        lastLoadedUserId.current = user.id; // 성공적으로 로드된 사용자 ID 저장
+      } catch (error) {
+        console.error('데이터 불러오기 치명적 오류:', error);
+        toast.error('데이터를 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setIsLoading(false);
+        isLoadingData.current = false;
+        console.log('[BookmarkProvider] 로딩 완료, isLoading: false 설정');
       }
     };
-    if ((!hasLoaded && user) || refreshKey > 0) {
-      loadFolders();
-    }
-  }, [user, isAuthLoading, hasLoaded, refreshKey]);
+    
+    loadAllData();
+  }, [user?.id, refreshKey]); // 의존성을 user?.id로 단순화
 
-  // 2. 북마크가 바뀔 때마다 bookmarkCount 갱신
+  // 북마크 변경 시 폴더 개수 업데이트 - 최적화된 useEffect
   useEffect(() => {
-    setFolders(prev =>
-      prev.map(f => ({
-        ...f,
-        bookmarkCount: bookmarks.filter(b => b.folder_id === f.id).length,
-      }))
-    );
-  }, [bookmarks]);
-
-  // 3. 북마크와 컬렉션 불러오기
-  useEffect(() => {
-    console.log('[BookmarkProvider] 북마크/컬렉션 useEffect 진입', { isAuthLoading, user });
-    if (isAuthLoading) return;
-    if ((!hasLoaded && user) || refreshKey > 0) {
-      const loadData = async () => {
-        setIsLoading(true);
-        try {
-          if (user) {
-            try {
-              await supabase.auth.refreshSession();
-            } catch (e) {
-              console.warn('세션 갱신 실패:', e);
-            }
-            console.log('[BookmarkProvider] 북마크 Supabase API 호출 직전', user.id);
-            const { data: bookmarksData, error: bookmarksError } = await supabase
-              .from('bookmarks')
-              .select('*')
-              .eq('user_id', user.id)
-              .order('created_at', { ascending: false });
-            console.log('[BookmarkProvider] 북마크 Supabase API 호출 결과', { bookmarksData, bookmarksError });
-
-            if (bookmarksError) {
-              console.error('북마크 불러오기 오류:', bookmarksError);
-              toast.error('북마크를 불러오는 중 오류가 발생했습니다.');
-            } else {
-              const formattedBookmarks: Bookmark[] = (bookmarksData || []).map(item => ({
-                id: item.id,
-                user_id: item.user_id,
-                url: item.url,
-                title: item.title || '',
-                description: item.description || '',
-                image_url: item.image_url,
-                thumbnail: item.thumbnail,
-                favicon: item.favicon,
-                category: item.category as Category,
-                tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : (Array.isArray(item.tags) ? item.tags : []),
-                memo: item.memo,
-                folder_id: item.folder_id,
-                created_at: item.created_at,
-                updated_at: item.updated_at,
-                saved_by: item.saved_by
-              }));
-              setBookmarks(formattedBookmarks);
-            }
-
-            console.log('[BookmarkProvider] 컬렉션 Supabase API 호출 직전', user.id);
-            const collectionsData = await collectionApi.list(user.id);
-            const collectionsError = null;
-            console.log('[BookmarkProvider] 컬렉션 Supabase API 호출 결과', { collectionsData, collectionsError });
-
-            const formattedCollections: Collection[] = (collectionsData || []).map(item => ({
-              id: item.id,
-              name: item.name,
-              description: item.description || '',
-              isPublic: item.is_public,
-              userId: item.user_id,
-              userNickname: item.profiles?.nickname || user.nickname,
-              userAvatar: item.profiles?.avatar_url || user.avatarUrl,
-              bookmarks: Array.isArray(item.bookmarks) ? item.bookmarks : [],
-              createdAt: item.created_at,
-              updatedAt: item.updated_at,
-              shareUrl: item.share_url || `linkbox.co.kr/c/${item.id}`,
-              coverImage: item.cover_image
-            }));
-            setCollections(formattedCollections);
-          } else {
-            setBookmarks([]);
-            setCollections([]);
-          }
-        } catch (error) {
-          console.error('데이터 불러오기 오류:', error);
-          toast.error('데이터를 불러오는 중 오류가 발생했습니다.');
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      loadData();
-      setHasLoaded(true);
+    if (folders.length > 0) {
+      setFolders(prev =>
+        prev.map(f => ({
+          ...f,
+          bookmarkCount: bookmarks.filter(b => b.folder_id === f.id).length,
+        }))
+      );
     }
-  }, [user, isAuthLoading, hasLoaded, refreshKey]);
+  }, [bookmarks.length]); // bookmarks 배열 전체가 아닌 length만 의존성으로 사용
 
   // 메타데이터 가져오기
   const fetchMetadata = async (url: string) => {
@@ -406,7 +448,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         bookmarks: collectionBookmarks,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        shareUrl: `linkbox.co.kr/c/${Date.now().toString(36)}`,
+        shareUrl: generateShareUrl(`col-${Date.now()}`),
         coverImage: collectionBookmarks[0]?.thumbnail
       };
       

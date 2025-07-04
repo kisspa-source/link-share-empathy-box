@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Share2, Globe, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { collectionApi } from "@/lib/supabase";
+import { generateShareUrl } from "@/lib/utils";
 import type { Collection } from "@/types/bookmark";
 
 export default function CollectionView() {
@@ -54,7 +55,7 @@ export default function CollectionView() {
           bookmarks: Array.isArray(data.bookmarks) ? data.bookmarks : [],
           createdAt: data.created_at,
           updatedAt: data.updated_at,
-          shareUrl: data.share_url || `linkbox.co.kr/c/${data.id}`,
+          shareUrl: generateShareUrl(data.id),
           coverImage: data.cover_image
         });
       } catch (e) {
@@ -81,13 +82,14 @@ export default function CollectionView() {
       return;
     }
     
-    navigator.clipboard.writeText(`https://${collection.shareUrl}`);
+    const shareUrl = `${window.location.origin}/c/${collection.id}`;
+    navigator.clipboard.writeText(shareUrl);
     toast.success("공유 URL이 클립보드에 복사되었습니다");
   };
   
   if (isLoading) {
     return (
-      <Layout>
+      <Layout showSidebar={!!user}>
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
           <p className="mt-4 text-muted-foreground">컬렉션을 불러오는 중...</p>
@@ -98,7 +100,7 @@ export default function CollectionView() {
 
   if (error || !collection) {
     return (
-      <Layout>
+      <Layout showSidebar={!!user}>
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <h1 className="text-2xl font-bold mb-4">
             {error || "컬렉션을 찾을 수 없습니다"}
@@ -106,16 +108,23 @@ export default function CollectionView() {
           <p className="text-muted-foreground mb-8">
             {!error && "요청한 컬렉션이 존재하지 않거나 접근 권한이 없습니다."}
           </p>
-          <Button asChild>
-            <Link to="/collections">컬렉션 목록으로</Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild>
+              <Link to="/collections">컬렉션 목록으로</Link>
+            </Button>
+            {!user && (
+              <Button asChild variant="outline">
+                <Link to="/login">로그인</Link>
+              </Button>
+            )}
+          </div>
         </div>
       </Layout>
     );
   }
 
   return (
-    <Layout>
+    <Layout showSidebar={!!user}>
       <div className="space-y-6">
         <div className="flex flex-col space-y-4">
           {collection.coverImage && (
@@ -176,6 +185,22 @@ export default function CollectionView() {
           bookmarks={collection.bookmarks} 
           emptyMessage="이 컬렉션에 북마크가 없습니다"
         />
+        
+        {!user && collection.isPublic && (
+          <div className="mt-8 p-4 bg-muted rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-3">
+              이 컬렉션이 마음에 드시나요? linku.me에 가입하여 나만의 북마크 컬렉션을 만들어보세요!
+            </p>
+            <div className="flex justify-center gap-2">
+              <Button asChild size="sm">
+                <Link to="/signup">회원가입</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/login">로그인</Link>
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

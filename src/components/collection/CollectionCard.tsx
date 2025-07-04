@@ -28,7 +28,8 @@ export default function CollectionCard({ collection, showToggleVisibility = fals
     e.preventDefault();
     e.stopPropagation();
     
-    navigator.clipboard.writeText(`https://${collection.shareUrl}`);
+    const shareUrl = `${window.location.origin}/c/${collection.id}`;
+    navigator.clipboard.writeText(shareUrl);
     toast.success("공유 URL이 클립보드에 복사되었습니다");
   };
 
@@ -113,7 +114,7 @@ export default function CollectionCard({ collection, showToggleVisibility = fals
         {collection.isPublic && !showToggleVisibility && (
           <CardFooter className="p-4 pt-0 flex flex-col items-end border-t mt-2">
             <a
-              href={`https://${collection.shareUrl}`}
+              href={`${window.location.origin}/c/${collection.id}`}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}

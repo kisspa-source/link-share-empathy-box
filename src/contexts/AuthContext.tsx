@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchWithTimeout, handleError } from '@/lib/utils';
 import { Session, User as SupabaseUser, AuthError } from '@supabase/supabase-js';
@@ -37,13 +37,87 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
+  // 중복 호출 방지를 위한 ref
+  const isHandlingSession = useRef(false);
+  const lastProcessedUserId = useRef<string | null>(null);
+  
   // 사용자 정보 설정 함수
   const setUser = (user: User | null) => {
     console.log('사용자 정보 설정:', user);
     setUserState(user);
-    // 사용자 정보가 있으면 인증됨 상태로 설정
     setIsAuthenticated(!!user);
   };
+
+  // 디바운스된 handleSession 함수
+  const handleSession = useCallback(async (session: Session | null) => {
+    console.log('handleSession 호출됨', { session: !!session });
+    
+    if (!session?.user) {
+      console.log('세션에 사용자 정보가 없습니다. 사용자 정보를 초기화합니다.');
+      setUser(null);
+      setIsLoading(false);
+      isHandlingSession.current = false;
+      lastProcessedUserId.current = null;
+      return;
+    }
+
+    // 중복 처리 방지 - 이미 처리 중이거나 같은 사용자인 경우
+    if (isHandlingSession.current || lastProcessedUserId.current === session.user.id) {
+      console.log('[handleSession] 중복 처리 방지: 이미 처리 중이거나 같은 사용자');
+      return;
+    }
+
+    // 이미 같은 사용자 정보가 설정되어 있는 경우 조기 반환
+    if (userState && userState.id === session.user.id) {
+      console.log('[handleSession] 기존 사용자 상태가 존재합니다. 프로필 재요청을 생략합니다.');
+      setIsAuthenticated(true);
+      setIsLoading(false);
+      lastProcessedUserId.current = session.user.id;
+      return;
+    }
+
+    isHandlingSession.current = true;
+    
+    try {
+      const userData = session.user;
+      console.log('세션 처리 시작:', {
+        userId: userData.id,
+        email: userData.email,
+        metadata: userData.user_metadata,
+        appMetadata: userData.app_metadata
+      });
+      
+      let newUser = {
+        id: userData.id,
+        email: userData.email || '',
+        nickname: userData.user_metadata?.name ||
+                 userData.user_metadata?.nickname ||
+                 userData.user_metadata?.full_name ||
+                 userData.user_metadata?.user_name ||
+                 '사용자',
+        avatarUrl: userData.user_metadata?.avatar_url ||
+                 userData.user_metadata?.picture,
+        provider: userData.app_metadata?.provider || 'email'
+      };
+
+      // profiles 테이블 접근 제거 - user_metadata만 사용 (성능 최적화)
+      console.log('[handleSession] user_metadata에서 프로필 정보 사용 (profiles 테이블 접근 제거)');
+      
+      console.log('[handleSession] 프로필 데이터 처리 완료. 최종 newUser:', newUser);
+
+      setUser(newUser);
+      setIsAuthenticated(true);
+      lastProcessedUserId.current = userData.id;
+    } catch (error) {
+      console.error('세션 처리 중 치명적 오류 발생:', error);
+      setUser(null);
+      lastProcessedUserId.current = null;
+    } finally {
+      console.log('[AuthContext] handleSession: setIsLoading(false) 호출');
+      setIsLoading(false);
+      isHandlingSession.current = false;
+    }
+  }, [userState]);
 
   // 초기 세션 로드
   useEffect(() => {
@@ -67,18 +141,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setSessionState(session);
           await handleSession(session);
         } else if (isMounted) {
-          // 세션이 없는 경우 명시적으로 사용자 상태 초기화
           setSessionState(null);
           setUser(null);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('인증 확인 중 오류 발생:', error);
         if (isMounted) {
           setSessionState(null);
           setUser(null);
-        }
-      } finally {
-        if (isMounted) {
           setIsLoading(false);
         }
       }
@@ -86,110 +157,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     checkAuth();
 
-    // 인증 상태 변경 감지
+    // 인증 상태 변경 감지 - 디바운싱 적용
+    let authTimeout: NodeJS.Timeout;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return;
         
         console.log('인증 상태 변경 감지:', event, { hasSession: !!session });
         
-        if (event === 'SIGNED_OUT' || !session) {
-          setSessionState(null);
-          setUser(null);
-          return;
-        }
-        
-        try {
-          setSessionState(session);
-          await handleSession(session);
-        } catch (error) {
-          console.error('세션 처리 중 오류 발생:', error);
-          setSessionState(null);
-          setUser(null);
-        }
+        // 디바운싱: 빠른 연속 이벤트를 방지
+        clearTimeout(authTimeout);
+        authTimeout = setTimeout(async () => {
+          if (!isMounted) return;
+          
+          if (event === 'SIGNED_OUT' || !session) {
+            setSessionState(null);
+            setUser(null);
+            isHandlingSession.current = false;
+            lastProcessedUserId.current = null;
+            return;
+          }
+          
+          try {
+            setSessionState(session);
+            await handleSession(session);
+          } catch (error) {
+            console.error('세션 처리 중 오류 발생:', error);
+            setSessionState(null);
+            setUser(null);
+          }
+        }, 300); // 300ms 디바운싱
       }
     );
 
     return () => {
       isMounted = false;
+      clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
-  }, []);
-
-  // 세션 처리 함수
-  const handleSession = async (session: Session | null) => {
-    console.log('handleSession 호출됨', { session });
-    if (!session?.user) {
-      console.log('세션에 사용자 정보가 없습니다. 사용자 정보를 초기화합니다.');
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-    if (userState && userState.id === session.user.id) {
-      console.log('[handleSession] 기존 사용자 상태가 존재합니다. 프로필 재요청을 생략합니다.');
-      setIsAuthenticated(true);
-      setIsLoading(false);
-      return;
-    }
-    try {
-      const userData = session.user;
-      console.log('세션 처리 시작:', {
-        userId: userData.id,
-        email: userData.email,
-        metadata: userData.user_metadata,
-        appMetadata: userData.app_metadata
-      });
-      let newUser = {
-        id: userData.id,
-        email: userData.email || '',
-        nickname: userData.user_metadata?.name ||
-                 userData.user_metadata?.nickname ||
-                 userData.user_metadata?.full_name ||
-                 userData.user_metadata?.user_name ||
-                 '사용자',
-        avatarUrl: userData.user_metadata?.avatar_url ||
-                 userData.user_metadata?.picture,
-        provider: userData.app_metadata?.provider || 'email'
-      };
-
-      console.log('[handleSession] 프로필 데이터 fetch 시도...');
-      try {
-        const result = await fetchWithTimeout(
-          supabase.from('profiles').select('*').eq('id', userData.id).single(),
-          5000
-        );
-
-        if (result) {
-          const { data: profile, error } = result as any;
-          console.log('[handleSession] profiles.select 호출 결과:', { data: profile, error });
-          if (error) {
-            handleError(error, 'profile fetch');
-          } else if (profile) {
-            newUser = {
-              ...newUser,
-              nickname: profile.nickname || newUser.nickname,
-              avatarUrl: profile.avatar_url || newUser.avatarUrl,
-            };
-          }
-        } else {
-          console.warn('[handleSession] 프로필 fetch 결과 없음, 기본값 사용');
-        }
-      } catch (error) {
-        handleError(error, 'profile fetch');
-      }
-      console.log('[handleSession] 프로필 데이터 처리 완료. 최종 newUser:', newUser);
-
-      setUser(newUser);
-      setIsAuthenticated(true);
-    } catch (error) {
-      console.error('세션 처리 중 치명적 오류 발생 (outer catch): ', error);
-      setUser(null);
-    } finally {
-      console.log('[AuthContext] handleSession: setIsLoading(false) 호출 직전 (finally)');
-      setIsLoading(false);
-      console.log('[AuthContext] handleSession: setIsLoading(false) 호출 완료. 현재 isLoading:', false);
-    }
-  };
+  }, [handleSession]);
 
   // 이메일/비밀번호 로그인
   const login = async (email: string, password: string, onSuccess?: () => void) => {

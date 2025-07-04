@@ -45,6 +45,7 @@ const App = () => (
                 <Route path="/collections" element={<CollectionsList />} />
                 <Route path="/collections/new" element={<CollectionCreate />} />
                 <Route path="/collections/:collectionId" element={<CollectionView />} />
+                <Route path="/c/:collectionId" element={<CollectionView />} />
                 <Route path="/tags" element={<TagsList />} />
                 <Route path="/tags/:tagId" element={<TagDetail />} />
                 <Route path="/profile" element={<Profile />} />
