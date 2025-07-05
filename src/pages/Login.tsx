@@ -91,6 +91,8 @@ export default function Login() {
     setIsSubmitting(true);
     console.log("로그인 시도:", email);
 
+    let redirectTimer: number | null = null;
+
     try {
       // 로그인 시도 (리다이렉트는 onAuthStateChange에서 처리)
       await login(email, password);
@@ -101,7 +103,7 @@ export default function Login() {
       console.log("로그인 성공 - 리다이렉트 대기 중...");
 
       // 2초 후에도 리다이렉트가 안 되면 강제로 홈으로 이동
-      const redirectTimer = setTimeout(() => {
+      redirectTimer = setTimeout(() => {
         if (isAuthenticated) {
           console.log("자동 리다이렉트 실행");
           const from = location.state?.from?.pathname || "/";
@@ -109,7 +111,6 @@ export default function Login() {
         }
       }, 2000);
 
-      return () => clearTimeout(redirectTimer);
     } catch (error: any) {
       console.error("로그인 오류:", error);
 
@@ -127,6 +128,10 @@ export default function Login() {
       }
     } finally {
       setIsSubmitting(false);
+      // Clear the timer if it was set
+      if (redirectTimer) {
+        clearTimeout(redirectTimer);
+      }
     }
   };
 

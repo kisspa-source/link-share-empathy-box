@@ -112,9 +112,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('세션 처리 중 치명적 오류 발생:', error);
       setUser(null);
       lastProcessedUserId.current = null;
+      // Reset isHandlingSession immediately on error to prevent deadlock
+      isHandlingSession.current = false;
+      throw error; // Re-throw to ensure error is properly handled upstream
     } finally {
       console.log('[AuthContext] handleSession: setIsLoading(false) 호출');
       setIsLoading(false);
+      // Ensure isHandlingSession is always reset, even if error was thrown
       isHandlingSession.current = false;
     }
   }, [userState]);

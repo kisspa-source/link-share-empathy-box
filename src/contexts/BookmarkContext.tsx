@@ -211,20 +211,52 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
 
   // 메타데이터 가져오기
   const fetchMetadata = async (url: string) => {
+    // Helper function to sanitize HTML content
+    const sanitizeText = (text: string): string => {
+      if (!text) return '';
+      // Remove HTML tags and decode HTML entities
+      const tempDiv = document.createElement('div');
+      tempDiv.textContent = text;
+      return tempDiv.innerHTML.replace(/<[^>]*>/g, '').trim();
+    };
+
     try {
       const res = await fetch(`https://r.jina.ai/${url}`)
       const html = await res.text()
+      
+      // Validate that we received HTML content
+      if (!html || typeof html !== 'string') {
+        throw new Error('Invalid response format');
+      }
+
       const doc = new DOMParser().parseFromString(html, 'text/html')
-      const title = doc.querySelector('title')?.textContent || url
-      const description = doc.querySelector('meta[name="description"]')?.getAttribute('content') || ''
+      
+      // Check if parsing was successful
+      if (!doc || doc.querySelector('parsererror')) {
+        throw new Error('Failed to parse HTML');
+      }
+
+      const rawTitle = doc.querySelector('title')?.textContent || url
+      const rawDescription = doc.querySelector('meta[name="description"]')?.getAttribute('content') || ''
       const keywords = doc.querySelector('meta[name="keywords"]')?.getAttribute('content') || ''
-      const keywordTags = keywords.split(',').map(k => k.trim()).filter(Boolean)
-      const domain = url.replace(/https?:\/\//, '').split('/')[0]
+      
+      // Sanitize the extracted content
+      const title = sanitizeText(rawTitle) || url
+      const description = sanitizeText(rawDescription) || ''
+      const keywordTags = keywords.split(',').map(k => sanitizeText(k.trim())).filter(Boolean)
+      
+      // Validate URL domain extraction
+      let domain = '';
+      try {
+        domain = new URL(url).hostname;
+      } catch {
+        domain = url.replace(/https?:\/\//, '').split('/')[0];
+      }
 
       return {
         title,
         description,
-        favicon: `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
+        favicon: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`,
         thumbnail: `https://picsum.photos/seed/${encodeURIComponent(url)}/640/360`,
         tags: keywordTags
       }
