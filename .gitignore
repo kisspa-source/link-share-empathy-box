@@ -24,5 +24,12 @@ dist-ssr
 *.sw?
 
 # Environment variables
-.env*
+.env
+.env.local
 .env.*.local
+# 실제 환경 변수 값이 포함된 파일들 (보안상 제외)
+.env.production
+
+# 개발 환경 설정은 팀 공유를 위해 포함 (민감하지 않은 설정만)
+# 만약 민감한 정보가 포함되어 있다면 아래 줄의 주석을 해제하세요:
+.env.development
