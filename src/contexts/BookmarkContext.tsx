@@ -48,6 +48,38 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
   const lastLoadedUserId = useRef<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   
+  // 안전한 favicon 생성 함수 (컴포넌트 내 공통 함수)
+  const generateSafeFavicon = (domain: string) => {
+    const problematicDomains = [
+      'picsum.photos',
+      'lorem.picsum.photos',
+      'placeholder.com',
+      'via.placeholder.com',
+      'dummyimage.com',
+      'fakeimg.pl',
+      'placehold.it',
+      'placeimg.com'
+    ];
+    
+    if (problematicDomains.some(pd => domain.includes(pd))) {
+      return undefined;
+    }
+    
+    if (/^\d+\.\d+\.\d+\.\d+/.test(domain)) {
+      return undefined;
+    }
+    
+    if (domain.includes('localhost') || domain.includes('127.0.0.1') || domain.includes('192.168.')) {
+      return undefined;
+    }
+    
+    if (domain && domain.includes('.')) {
+      return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
+    }
+    
+    return undefined;
+  };
+
   const refreshData = useCallback(() => {
     setRefreshKey(k => k + 1);
     lastLoadedUserId.current = null; // 강제 새로고침 시 사용자 ID 초기화
@@ -129,15 +161,43 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
           } else {
             const formattedBookmarks: Bookmark[] = (bookmarksData || []).map(item => {
               const itemDomain = item.url.replace(/https?:\/\//, '').split('/')[0];
+              
+              // image_url이 비어있는 경우 썸네일 생성
+              const generateImageUrl = (url: string, domain: string) => {
+                if (item.image_url && item.image_url.trim() !== '') {
+                  return item.image_url;
+                }
+                
+                // 무료 썸네일 API 사용 (실제 서비스)
+                try {
+                  const encodedUrl = encodeURIComponent(url);
+                  // 현재 사용 가능한 무료 API들
+                  const thumbnailOptions = [
+                    `https://image.thum.io/get/width/1200/crop/800/${encodedUrl}`,
+                    `https://s0.wp.com/mshots/v1/${encodedUrl}?w=1200&h=800`,
+                    `https://mini.s-shot.ru/1200x800/PNG/?${encodedUrl}`,
+                    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
+                  ];
+                  
+                  return thumbnailOptions[0]; // thum.io 사용
+                } catch (error) {
+                  console.warn('썸네일 생성 실패:', error);
+                  return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+                }
+              };
+              
+              const imageUrl = generateImageUrl(item.url, itemDomain);
+              const faviconUrl = generateSafeFavicon(itemDomain);
+              
               return {
                 id: item.id,
                 user_id: item.user_id,
                 url: item.url,
                 title: item.title || '',
                 description: item.description || '',
-                image_url: item.image_url,
-                thumbnail: item.thumbnail,
-                favicon: `https://www.google.com/s2/favicons?domain=${itemDomain}&sz=32`, // 동적 생성
+                image_url: imageUrl,
+                thumbnail: item.thumbnail || imageUrl, // 호환성을 위해 thumbnail도 설정
+                favicon: faviconUrl, // undefined일 수 있음
                 category: item.category as Category,
                 tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : (Array.isArray(item.tags) ? item.tags : []),
                 memo: item.memo,
@@ -212,17 +272,50 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [bookmarks.length]); // bookmarks 배열 전체가 아닌 length만 의존성으로 사용
 
-  // 메타데이터 가져오기 (제거 - Edge Functions으로 대체 예정)
+  // 메타데이터 가져오기 (Edge Functions 사용)
   const fetchMetadata = async (url: string) => {
-    // Edge Functions으로 대체 예정으로 기본값 반환
-    const domain = url.replace(/https?:\/\//, '').split('/')[0];
-    return {
-      title: url,
-      description: '',
-      favicon: domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : '',
-      thumbnail: '',
-      tags: []
-    };
+    try {
+      console.log('🔍 Edge Function으로 메타데이터 추출 시작:', url);
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/save-bookmark`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.metadata) {
+        console.log('✅ 메타데이터 추출 성공:', result.metadata);
+        return result.metadata;
+      } else {
+        throw new Error('메타데이터 추출 실패');
+      }
+      
+    } catch (error) {
+      console.error('❌ Edge Function 메타데이터 추출 오류:', error);
+      
+      // 실패 시 기본값 반환 (안전한 favicon 생성)
+      const domain = url.replace(/https?:\/\//, '').split('/')[0];
+      
+      return {
+        title: url,
+        description: '',
+        favicon: generateSafeFavicon(domain),
+        image_url: `https://image.thum.io/get/width/1200/crop/800/${encodeURIComponent(url)}`,
+        tags: []
+      };
+    }
   };
 
   useEffect(() => {
@@ -251,19 +344,28 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // 빠른 저장을 위한 기본 메타데이터 생성
+      // 실제 메타데이터 추출 (Edge Functions 사용)
+      console.log('📊 Edge Function으로 메타데이터 추출 중...');
+      const extractedMetadata = await fetchMetadata(url);
+      
       const domain = url.replace(/https?:\/\//, '').split('/')[0];
+      
       const metadata = {
-        title: url,
-        description: description || '',
-        favicon: domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : '',
-        thumbnail: '',
-        tags: []
+        title: extractedMetadata.title || url,
+        description: extractedMetadata.description || description || '',
+        favicon: extractedMetadata.favicon || generateSafeFavicon(domain),
+        image_url: extractedMetadata.image_url || `https://image.thum.io/get/width/1200/crop/800/${encodeURIComponent(url)}`,
+        tags: extractedMetadata.tags || []
       };
 
-      // 입력된 태그 사용 (분석 태그 제거)
-      const tagNames = Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean) : [];
-      
+      console.log('✅ 메타데이터 추출 완료:', metadata);
+
+      // 입력된 태그와 추출된 태그 결합
+      const finalTags = Array.from(new Set([
+        ...(Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean) : []),
+        ...(metadata.tags || [])
+      ]));
+
       const category: Category = 'Other';
 
       // 사용자 인증 확인 (RLS 정책 위반 방지)
@@ -279,9 +381,9 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         url,
         title: metadata.title,
         description: metadata.description,
-        image_url: metadata.thumbnail || '',
+        image_url: metadata.image_url,
         folder_id: folderId,
-        tags: tagNames,
+        tags: finalTags,
       };
       
       console.log('2. 북마크 저장 데이터:', bookmarkData);
@@ -323,6 +425,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
 
       // 애플리케이션 형식에 맞게 변환 (favicon 동적 생성)
       const urlDomain = newBookmarkData.url.replace(/https?:\/\//, '').split('/')[0];
+      
       const newBookmark: Bookmark = {
         id: newBookmarkData.id,
         user_id: user.id,
@@ -331,7 +434,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         description: newBookmarkData.description || '',
         image_url: newBookmarkData.image_url || '',
         thumbnail: newBookmarkData.thumbnail,
-        favicon: `https://www.google.com/s2/favicons?domain=${urlDomain}&sz=32`, // 동적 생성
+        favicon: generateSafeFavicon(urlDomain),
         memo: newBookmarkData.memo,
         folder_id: newBookmarkData.folder_id,
         tags: typeof newBookmarkData.tags === 'string' ? JSON.parse(newBookmarkData.tags) : (Array.isArray(newBookmarkData.tags) ? newBookmarkData.tags : []),
@@ -416,7 +519,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         shareUrl: generateShareUrl(`col-${Date.now()}`),
-        coverImage: collectionBookmarks[0]?.thumbnail
+        coverImage: collectionBookmarks[0]?.image_url || collectionBookmarks[0]?.thumbnail
       };
       
       setCollections(prev => [newCollection, ...prev]);

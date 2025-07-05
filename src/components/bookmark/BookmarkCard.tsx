@@ -36,6 +36,8 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
   const { deleteBookmark } = useBookmarks();
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const [faviconLoadError, setFaviconLoadError] = useState(false);
 
   const handleDelete = () => {
     setShowDeleteDialog(true);
@@ -50,6 +52,21 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
     navigator.clipboard.writeText(bookmark.url);
     toast.success("URL이 클립보드에 복사되었습니다");
   };
+
+  const handleImageError = () => {
+    setImageLoadError(true);
+  };
+
+  const handleFaviconError = () => {
+    setFaviconLoadError(true);
+  };
+
+  // 이미지 URL 결정 (image_url을 우선적으로 사용)
+  const imageUrl = bookmark.image_url || bookmark.thumbnail;
+  const hasImage = imageUrl && !imageLoadError;
+
+  // favicon 표시 여부 결정
+  const shouldShowFavicon = bookmark.favicon && !faviconLoadError;
 
   // Generate random users who saved this bookmark (for MVP)
   const savedCount = bookmark.saved_by || 0;
@@ -83,17 +100,20 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
             className="block"
           >
             <div className="relative">
-              {bookmark.thumbnail ? (
+              {/* image_url을 우선적으로 사용하고, 없으면 thumbnail 사용 */}
+              {hasImage ? (
                 <div className="aspect-[4/3] w-full overflow-hidden">
                   <img 
-                    src={bookmark.thumbnail} 
+                    src={imageUrl} 
                     alt={bookmark.title} 
                     className="h-full w-full object-cover transition-transform hover:scale-105"
+                    onError={handleImageError}
                   />
                 </div>
               ) : (
                 <div className="aspect-[4/3] w-full bg-muted flex items-center justify-center">
                   <ExternalLink className="h-6 w-6 text-muted-foreground" />
+                  <span className="sr-only">이미지 없음</span>
                 </div>
               )}
               
@@ -110,15 +130,17 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
           
           <div className="p-3">
             <div className="flex items-center space-x-2 mb-2">
-              {bookmark.favicon && (
+              {shouldShowFavicon ? (
                 <img 
                   src={bookmark.favicon} 
                   alt="favicon" 
-                  className="w-3 h-3"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
+                  className="w-3 h-3 flex-shrink-0"
+                  onError={handleFaviconError}
                 />
+              ) : (
+                <div className="w-3 h-3 flex-shrink-0 rounded-sm bg-muted flex items-center justify-center">
+                  <ExternalLink className="h-2 w-2 text-muted-foreground" />
+                </div>
               )}
               <h3 className="text-sm font-medium truncate">{bookmark.title}</h3>
             </div>
