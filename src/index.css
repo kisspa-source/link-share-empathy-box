@@ -115,3 +115,74 @@
     @apply bg-card rounded-lg shadow-sm border overflow-hidden transition-all hover:shadow-md;
   }
 }
+
+/* 사이드바 및 레이아웃 애니메이션 개선 */
+@layer components {
+  .sidebar-transition {
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .content-transition {
+    transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .grid-transition {
+    transition: grid-template-columns 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* GPU 가속을 위한 will-change 속성 */
+  .will-change-auto {
+    will-change: auto;
+  }
+
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .will-change-layout {
+    will-change: width, margin-left, max-width;
+  }
+
+  /* 북마크 카드 호버 효과 개선 */
+  .bookmark-card-hover {
+    @apply transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1 hover:scale-[1.02];
+  }
+
+  /* 스켈레톤 애니메이션 개선 */
+  .skeleton-animate {
+    @apply animate-pulse transition-all duration-300 ease-in-out;
+  }
+}
+
+/* 커스텀 애니메이션 키프레임 */
+@keyframes smooth-expand {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes smooth-collapse {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+.smooth-expand {
+  animation: smooth-expand 0.3s ease-out;
+}
+
+.smooth-collapse {
+  animation: smooth-collapse 0.3s ease-in;
+}
+

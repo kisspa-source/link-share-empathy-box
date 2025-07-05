@@ -74,7 +74,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
 
   return (
     <>
-      <Card className="overflow-hidden transition-all hover:shadow-md">
+      <Card className="overflow-hidden bookmark-card-hover">
         <CardContent className="p-0">
           <a 
             href={bookmark.url} 
@@ -84,7 +84,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
           >
             <div className="relative">
               {bookmark.thumbnail ? (
-                <div className="aspect-video w-full overflow-hidden">
+                <div className="aspect-[4/3] w-full overflow-hidden">
                   <img 
                     src={bookmark.thumbnail} 
                     alt={bookmark.title} 
@@ -92,8 +92,8 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
                   />
                 </div>
               ) : (
-                <div className="aspect-video w-full bg-muted flex items-center justify-center">
-                  <ExternalLink className="h-8 w-8 text-muted-foreground" />
+                <div className="aspect-[4/3] w-full bg-muted flex items-center justify-center">
+                  <ExternalLink className="h-6 w-6 text-muted-foreground" />
                 </div>
               )}
               
@@ -108,31 +108,31 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
             </div>
           </a>
           
-          <div className="p-4">
+          <div className="p-3">
             <div className="flex items-center space-x-2 mb-2">
               {bookmark.favicon && (
                 <img 
                   src={bookmark.favicon} 
                   alt="favicon" 
-                  className="w-4 h-4"
+                  className="w-3 h-3"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
               )}
-              <h3 className="font-medium truncate">{bookmark.title}</h3>
+              <h3 className="text-sm font-medium truncate">{bookmark.title}</h3>
             </div>
             
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
               {bookmark.description}
             </p>
             
             {bookmark.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">
-                {bookmark.tags.map((tag, idx) => {
+              <div className="flex flex-wrap gap-1 mb-2">
+                {bookmark.tags.slice(0, 3).map((tag, idx) => {
                   if (typeof tag === 'string') {
                     return (
-                      <span key={tag} className="tag-badge">#{tag}</span>
+                      <span key={tag} className="inline-block px-1.5 py-0.5 bg-muted rounded text-xs">#{tag}</span>
                     );
                   } else if (typeof tag === 'object' && tag !== null) {
                     const tagId = (typeof tag === 'object' && tag !== null && 'id' in tag) ? (tag as any).id : idx;
@@ -141,7 +141,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
                     return (
                       <span
                         key={tagId}
-                        className="tag-badge"
+                        className="inline-block px-1.5 py-0.5 bg-muted rounded text-xs"
                         style={{
                           backgroundColor: tagColor ? `${tagColor}20` : undefined,
                           color: tagColor || undefined
@@ -154,42 +154,47 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
                     return null;
                   }
                 })}
+                {bookmark.tags.length > 3 && (
+                  <span className="inline-block px-1.5 py-0.5 bg-muted rounded text-xs text-muted-foreground">
+                    +{bookmark.tags.length - 3}
+                  </span>
+                )}
               </div>
             )}
             
             {bookmark.memo && (
-              <div className="text-sm bg-accent/50 p-2 rounded-md mt-3">
+              <div className="text-xs bg-accent/50 p-2 rounded-md mt-2">
                 {bookmark.memo}
               </div>
             )}
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex justify-between items-center border-t mt-2">
+        <CardFooter className="p-3 pt-0 flex justify-between items-center border-t mt-2">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="flex items-center text-muted-foreground"
+            className="flex items-center text-muted-foreground h-7 px-2 text-xs"
             onClick={() => setShowUserDialog(true)}
           >
-            <Users className="h-3.5 w-3.5 mr-1" />
+            <Users className="h-3 w-3 mr-1" />
             <span>{savedCount}명</span>
           </Button>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <a 
               href={bookmark.url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="rounded-md p-2 hover:bg-accent"
+              className="rounded-md p-1.5 hover:bg-accent"
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-3.5 w-3.5" />
             </a>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

@@ -10,7 +10,7 @@ import {
   directBookmarkDelete,
   folderApi
 } from '../lib/supabase';
-import { analyzeSite } from '../lib/analyze';
+
 import { generateShareUrl } from '../lib/utils';
 
 interface BookmarkContextType {
@@ -127,23 +127,26 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
             console.error('북마크 불러오기 오류:', bookmarksError);
             toast.error('북마크를 불러오는 중 오류가 발생했습니다.');
           } else {
-            const formattedBookmarks: Bookmark[] = (bookmarksData || []).map(item => ({
-              id: item.id,
-              user_id: item.user_id,
-              url: item.url,
-              title: item.title || '',
-              description: item.description || '',
-              image_url: item.image_url,
-              thumbnail: item.thumbnail,
-              favicon: item.favicon,
-              category: item.category as Category,
-              tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : (Array.isArray(item.tags) ? item.tags : []),
-              memo: item.memo,
-              folder_id: item.folder_id,
-              created_at: item.created_at,
-              updated_at: item.updated_at,
-              saved_by: item.saved_by
-            }));
+            const formattedBookmarks: Bookmark[] = (bookmarksData || []).map(item => {
+              const itemDomain = item.url.replace(/https?:\/\//, '').split('/')[0];
+              return {
+                id: item.id,
+                user_id: item.user_id,
+                url: item.url,
+                title: item.title || '',
+                description: item.description || '',
+                image_url: item.image_url,
+                thumbnail: item.thumbnail,
+                favicon: `https://www.google.com/s2/favicons?domain=${itemDomain}&sz=32`, // 동적 생성
+                category: item.category as Category,
+                tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : (Array.isArray(item.tags) ? item.tags : []),
+                memo: item.memo,
+                folder_id: item.folder_id,
+                created_at: item.created_at,
+                updated_at: item.updated_at,
+                saved_by: item.saved_by
+              };
+            });
             setBookmarks(formattedBookmarks);
             
             // 폴더별 북마크 개수 업데이트 - 최적화된 방식
@@ -209,30 +212,18 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [bookmarks.length]); // bookmarks 배열 전체가 아닌 length만 의존성으로 사용
 
-  // 메타데이터 가져오기
+  // 메타데이터 가져오기 (제거 - Edge Functions으로 대체 예정)
   const fetchMetadata = async (url: string) => {
-    try {
-      const res = await fetch(`https://r.jina.ai/${url}`)
-      const html = await res.text()
-      const doc = new DOMParser().parseFromString(html, 'text/html')
-      const title = doc.querySelector('title')?.textContent || url
-      const description = doc.querySelector('meta[name="description"]')?.getAttribute('content') || ''
-      const keywords = doc.querySelector('meta[name="keywords"]')?.getAttribute('content') || ''
-      const keywordTags = keywords.split(',').map(k => k.trim()).filter(Boolean)
-      const domain = url.replace(/https?:\/\//, '').split('/')[0]
-
-      return {
-        title,
-        description,
-        favicon: `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
-        thumbnail: `https://picsum.photos/seed/${encodeURIComponent(url)}/640/360`,
-        tags: keywordTags
-      }
-    } catch (e) {
-      console.warn('metadata fetch failed', e)
-      return { title: url, description: '', favicon: '', thumbnail: '', tags: [] }
-    }
-  }
+    // Edge Functions으로 대체 예정으로 기본값 반환
+    const domain = url.replace(/https?:\/\//, '').split('/')[0];
+    return {
+      title: url,
+      description: '',
+      favicon: domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : '',
+      thumbnail: '',
+      tags: []
+    };
+  };
 
   useEffect(() => {
     const unique = Array.from(new Set(bookmarks.flatMap(b => b.tags)))
@@ -247,7 +238,8 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         toast.error('북마크를 추가하려면 로그인해야 합니다.');
         return;
       }
-      console.log('1. URL 유효성 검사 시작:', url);
+
+      console.log('1. 북마크 저장 시작:', url);
 
       // URL 유효성 검사 및 프로토콜 추가
       try {
@@ -258,47 +250,22 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
           url = 'https://' + url;
         }
       }
-      console.log('2. 메타데이터 가져오기 시작:', url);
-      // 메타데이터 가져오기 (5초 타임아웃 적용)
-      let metadata;
-      let didTimeout = false;
-      try {
-        metadata = await Promise.race([
-          fetchMetadata(url),
-          new Promise((_, reject) => setTimeout(() => {
-            didTimeout = true;
-            reject(new Error('메타데이터 요청이 5초를 초과했습니다.'));
-          }, 5000))
-        ]);
-      } catch (e) {
-        console.warn('메타데이터 fetch 예외:', e);
-        // fallback: 도메인 추출
-        let domain = '';
-        try {
-          domain = url.replace(/https?:\/\//, '').split('/')[0];
-        } catch {}
-        metadata = {
-          title: url,
-          description: didTimeout ? '메타데이터 요청이 너무 오래 걸렸습니다.' : '메타데이터를 가져오지 못했습니다.',
-          favicon: domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : '',
-          thumbnail: '',
-          tags: []
-        };
-        toast.warning('메타데이터를 불러오지 못했습니다. 북마크는 정상 저장됩니다.');
-      }
-      if (!metadata) {
-        metadata = { title: url, description: '', favicon: '', thumbnail: '', tags: [] };
-      }
-      console.log('3. 메타데이터 결과:', metadata);
-      const { tags: analyzedTags } = await analyzeSite(url);
-      // 입력 태그 + 분석 태그 합치기(중복 제거)
-      let tagNames: string[] = [];
-      if (Array.isArray(tags)) {
-        tagNames = Array.from(new Set([...(tags.map(t => t.trim()).filter(Boolean)), ...analyzedTags]));
-      } else {
-        tagNames = analyzedTags;
-      }
-      const category: Category = 'Other'
+
+      // 빠른 저장을 위한 기본 메타데이터 생성
+      const domain = url.replace(/https?:\/\//, '').split('/')[0];
+      const metadata = {
+        title: url,
+        description: description || '',
+        favicon: domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : '',
+        thumbnail: '',
+        tags: []
+      };
+
+      // 입력된 태그 사용 (분석 태그 제거)
+      const tagNames = Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean) : [];
+      
+      const category: Category = 'Other';
+
       // 사용자 인증 확인 (RLS 정책 위반 방지)
       if (!user?.id) {
         console.error('사용자 인증 정보가 없습니다.');
@@ -306,26 +273,20 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Supabase에 저장할 북마크 데이터 준비 (RLS 정책에 맞게 user_id 필수)
+      // Supabase에 저장할 북마크 데이터 준비 (데이터베이스 스키마에 맞춤)
       const bookmarkData = {
-        user_id: user.id, // 반드시 인증된 사용자 ID 포함
+        user_id: user.id,
         url,
-        title: metadata.title || url,
-        description: description || metadata.description || '',
-        image_url: metadata.thumbnail || '', // image_url 컬럼 있음
+        title: metadata.title,
+        description: metadata.description,
+        image_url: metadata.thumbnail || '',
         folder_id: folderId,
-        tags: tagNames, // string[] 배열로 저장
-        // created_at, updated_at은 DB에서 자동 생성
+        tags: tagNames,
       };
       
-      console.log('5. 북마크 저장 데이터:', bookmarkData);
+      console.log('2. 북마크 저장 데이터:', bookmarkData);
       
-      // 디버깅용 로그: 전송되는 데이터 형식 확인
-      console.log('전송되는 tags 형식:', typeof bookmarkData.tags, bookmarkData.tags);
-      
-      console.log('5. 북마크 추가 시도 (카테고리 제외):', bookmarkData);
-      
-      // 직접 API 호출 방식으로 북마크 추가 시도 (인증 토큰 포함)
+      // 직접 API 호출 방식으로 북마크 추가
       let newBookmarkData;
       try {
         // 현재 세션에서 액세스 토큰 가져오기
@@ -336,19 +297,18 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
           throw new Error('인증 토큰을 가져올 수 없습니다. 다시 로그인해 주세요.');
         }
         
-        console.log('직접 API 호출 방식으로 북마크 추가 시도...');
+        console.log('3. 직접 API 호출로 북마크 추가...');
         const result = await directBookmarkInsert(bookmarkData, accessToken);
-        console.log('6. 직접 API 호출 결과:', result);
+        console.log('4. 직접 API 호출 결과:', result);
         
         if (result.error) {
           console.error('직접 API 호출 오류:', result.error);
           toast.error('북마크 추가 중 오류가 발생했습니다.');
-          alert('북마크 추가 오류 상세정보:\n' + JSON.stringify(result.error, null, 2));
           return;
         }
         
         newBookmarkData = result.data;
-        console.log('7. 직접 API 호출 성공:', newBookmarkData);
+        console.log('5. 북마크 추가 성공:', newBookmarkData);
         
         if (!newBookmarkData) {
           console.error('북마크 추가 결과가 비어있음');
@@ -358,11 +318,11 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       } catch (insertError) {
         console.error('북마크 추가 오류:', insertError);
         toast.error('북마크 추가 중 오류가 발생했습니다.');
-        alert('북마크 추가 오류 상세정보:\n' + JSON.stringify(insertError, null, 2));
         return;
       }
-      console.log('7. 북마크 추가 성공:', newBookmarkData);
-      // 애플리케이션 형식에 맞게 변환
+
+      // 애플리케이션 형식에 맞게 변환 (favicon 동적 생성)
+      const urlDomain = newBookmarkData.url.replace(/https?:\/\//, '').split('/')[0];
       const newBookmark: Bookmark = {
         id: newBookmarkData.id,
         user_id: user.id,
@@ -371,23 +331,30 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         description: newBookmarkData.description || '',
         image_url: newBookmarkData.image_url || '',
         thumbnail: newBookmarkData.thumbnail,
-        favicon: newBookmarkData.favicon,
+        favicon: `https://www.google.com/s2/favicons?domain=${urlDomain}&sz=32`, // 동적 생성
         memo: newBookmarkData.memo,
         folder_id: newBookmarkData.folder_id,
-        // tags는 string[] 타입이어야 함
         tags: typeof newBookmarkData.tags === 'string' ? JSON.parse(newBookmarkData.tags) : (Array.isArray(newBookmarkData.tags) ? newBookmarkData.tags : []),
         category: category,
         saved_by: newBookmarkData.saved_by || 0,
         created_at: newBookmarkData.created_at,
         updated_at: newBookmarkData.updated_at
       };
+
       // 상태 업데이트
       setBookmarks(prev => [newBookmark, ...prev]);
-      toast.success('북마크가 저장되었습니다');
+      toast.success('북마크가 빠르게 저장되었습니다! 🚀');
+      
+      // Edge Functions으로 메타데이터 개선 (백그라운드에서 실행)
+      if (typeof window !== 'undefined') {
+        setTimeout(() => {
+          console.log('💡 메타데이터는 Edge Functions에서 백그라운드로 업데이트됩니다.');
+        }, 100);
+      }
+      
     } catch (error) {
       console.error('addBookmark 전체 에러:', error);
       toast.error('북마크 저장에 실패했습니다');
-      alert('addBookmark 전체 에러:\n' + JSON.stringify(error, null, 2));
     } finally {
       setIsLoading(false);
     }

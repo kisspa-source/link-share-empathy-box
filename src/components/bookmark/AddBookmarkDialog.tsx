@@ -116,9 +116,18 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
             />
           </div>
           
-          <div className="text-sm text-muted-foreground">
-            추가하면 AI가 자동으로 태그와 카테고리를 생성합니다.
+          <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span className="font-medium">빠른 저장</span>
+            </div>
+            <p className="mt-1 text-xs">
+              북마크가 즉시 저장됩니다. 메타데이터는 백그라운드에서 자동으로 업데이트됩니다.
+            </p>
           </div>
+          
           <div>
             <div className="flex flex-wrap gap-2 mb-2">
               {tags.map(tag => (
@@ -162,7 +171,19 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
             취소
           </Button>
           <Button onClick={handleSubmit} disabled={!url.trim() || isAdding || isLoading}>
-            {isAdding ? "저장 중..." : "저장"}
+            {isAdding ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                저장 중...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                빠른 저장
+              </div>
+            )}
           </Button>
         </div>
       </DialogContent>

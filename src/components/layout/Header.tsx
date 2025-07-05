@@ -12,10 +12,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, Plus, Moon, Sun, User, LogOut } from 'lucide-react';
+import { Search, Plus, Moon, Sun, User, LogOut, Heart, Bookmark, Menu } from 'lucide-react';
 import AddBookmarkDialog from '@/components/bookmark/AddBookmarkDialog';
 
-export default function Header() {
+interface HeaderProps {
+  isMobileMenuOpen?: boolean;
+  setIsMobileMenuOpen?: (open: boolean) => void;
+}
+
+export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: HeaderProps) {
   const { user, logout, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isAddBookmarkOpen, setIsAddBookmarkOpen] = useState(false);
@@ -34,15 +39,23 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center px-4">
+        {/* 모바일 사이드바 토글 버튼 */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-2 md:hidden"
+          onClick={() => setIsMobileMenuOpen && setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
         <Link to="/" className="mr-4 flex items-center space-x-2">
-          <div className="flex flex-col items-start">
-            <span className="hidden sm:flex text-xl font-bold tracking-tight bg-gradient-to-r from-linkbox-purple to-linkbox-blue text-transparent bg-clip-text">
-              linku.me
-            </span>
-            <span className="sm:hidden text-xl font-bold tracking-tight bg-gradient-to-r from-linkbox-purple to-linkbox-blue text-transparent bg-clip-text">
-              LP
-            </span>
+          <div className="w-8 h-8 bg-gradient-to-r from-linkbox-blue to-purple-600 rounded-lg flex items-center justify-center">
+            <Bookmark className="h-5 w-5 text-white" />
           </div>
+          <span className="font-bold text-lg">
+            linku.me
+          </span>
         </Link>
         
         <div className="flex flex-1 items-center justify-end space-x-2">

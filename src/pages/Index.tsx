@@ -3,10 +3,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBookmarks } from "@/contexts/BookmarkContext";
 import Layout from "@/components/layout/Layout";
 import BookmarkGrid from "@/components/bookmark/BookmarkGrid";
+import CollectionCard from "@/components/collection/CollectionCard";
+import FloatingNav from "@/components/layout/FloatingNav";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Bookmark, LogIn } from "lucide-react";
+import { collectionApi } from "@/lib/supabase";
+import type { Collection } from "@/types/bookmark";
 
 export default function Index() {
   const { isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
@@ -15,6 +19,8 @@ export default function Index() {
   const [isClient, setIsClient] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [publicCollections, setPublicCollections] = useState<Collection[]>([]);
+  const [isLoadingPublic, setIsLoadingPublic] = useState(false);
 
   useEffect(() => {
     console.log('Index 컴포넌트 마운트됨', { isAuthenticated, isAuthLoading, user });
@@ -39,6 +45,41 @@ export default function Index() {
   useEffect(() => {
     console.log('인증 상태 업데이트:', { isAuthenticated, isAuthLoading, user });
   }, [isAuthenticated, isAuthLoading, user]);
+
+  // 공개 컬렉션 로드 (비로그인 사용자용)
+  useEffect(() => {
+    const loadPublicCollections = async () => {
+      if (!isAuthenticated && !isAuthLoading && isClient) {
+        setIsLoadingPublic(true);
+        try {
+          const data = await collectionApi.listPublic();
+          const formattedCollections: Collection[] = (data || [])
+            .slice(0, 8) // 최대 8개만 표시
+            .map(item => ({
+              id: item.id,
+              name: item.name,
+              description: item.description || '',
+              isPublic: item.is_public,
+              userId: item.user_id,
+              userNickname: item.profiles?.nickname || 'Unknown',
+              userAvatar: item.profiles?.avatar_url,
+              bookmarks: Array.isArray(item.bookmarks) ? item.bookmarks : [],
+              createdAt: item.created_at,
+              updatedAt: item.updated_at,
+              shareUrl: `${window.location.origin}/c/${item.id}`,
+              coverImage: item.cover_image
+            }));
+          setPublicCollections(formattedCollections);
+        } catch (error) {
+          console.error('공개 컬렉션 로드 실패:', error);
+        } finally {
+          setIsLoadingPublic(false);
+        }
+      }
+    };
+
+    loadPublicCollections();
+  }, [isAuthenticated, isAuthLoading, isClient]);
 
   // 로그아웃 중 표시
   if (isLoggingOut) {
@@ -78,46 +119,51 @@ export default function Index() {
   // 인증되지 않은 사용자에게 보여줄 UI
   if (!isAuthenticated) {
     return (
-      <Layout showSidebar={false}>
-        {/* Hero Section */}
-        <section className="relative flex flex-col items-center justify-center min-h-[90vh] text-center overflow-hidden">
+      <>
+        <FloatingNav />
+        <Layout showSidebar={false}>
+          {/* Hero Section */}
+        <section className="relative flex flex-col items-center justify-center min-h-[40vh] md:min-h-[45vh] text-center overflow-hidden pt-20 md:pt-24">
           {/* Video Background */}
-          <div className="absolute inset-0 w-full h-full">
+          <div className="absolute top-14 left-0 right-0 bottom-0 w-full z-0">
             <video
               autoPlay
               loop
               muted
               playsInline
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover z-0"
             >
               <source src="/background/linku.me.bg.mp4" type="video/mp4" />
             </video>
             {/* Dark Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black/80 backdrop-blur-[1px]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-black/70 to-black/80 backdrop-blur-[1px] z-1" />
           </div>
+          
+          {/* Top Navigation Area - FloatingNav 뒤 배경 */}
+          <div className="absolute top-0 left-0 right-0 h-14 bg-background/10 backdrop-blur-sm z-2" />
 
           {/* Content */}
-          <div className="relative z-10 max-w-4xl px-4">
+          <div className="relative z-20 max-w-4xl px-4">
             <div className="mx-auto mb-8 p-4 rounded-full bg-white/20 backdrop-blur-md w-fit animate-pulse">
               <Bookmark className="h-10 w-10 text-white" />
             </div>
             
-            <h1 className="text-5xl font-bold tracking-tight mb-6 bg-gradient-to-r from-white via-linkbox-blue to-white text-transparent bg-clip-text animate-gradient drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+            <h1 className="text-2xl md:text-5xl font-bold tracking-tight mb-6 bg-gradient-to-r from-white via-linkbox-blue to-white text-transparent bg-clip-text animate-gradient drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               북마크 저장, 공유, 그리고 발견을 한곳에서
             </h1>
             
-            <p className="text-2xl text-white/90 mb-10 leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] font-medium">
+            <p className="text-lg md:text-2xl text-white/90 mb-6 leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] font-medium">
               AI가 자동으로 태그와 카테고리를 추가해주는 스마트한 북마크 관리 서비스.<br />
               가치 있는 링크를 저장하고 다른 사용자와 공유하세요.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <Button asChild size="lg" className="text-lg px-8 py-6 rounded-full hover:scale-105 transition-transform bg-white text-primary hover:bg-white/90 shadow-lg">
+              <Button asChild size="default" className="text-base px-6 py-3 rounded-full hover:scale-105 transition-transform bg-white text-primary hover:bg-white/90 shadow-lg">
                 <Link to="/signup">무료로 시작하기</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6 rounded-full hover:scale-105 transition-transform bg-white text-primary hover:bg-white/90 shadow-lg">
+              <Button asChild variant="outline" size="default" className="text-base px-6 py-3 rounded-full hover:scale-105 transition-transform bg-white text-primary hover:bg-white/90 shadow-lg">
                 <Link to="/login">
-                  <LogIn className="h-5 w-5 mr-2" />
+                  <LogIn className="h-4 w-4 mr-2" />
                   로그인
                 </Link>
               </Button>
@@ -125,8 +171,56 @@ export default function Index() {
           </div>
         </section>
 
+        {/* Public Collections Section */}
+        <section id="public-collections" className="py-20 bg-background">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold mb-4">인기 컬렉션 둘러보기</h2>
+              <p className="text-lg text-muted-foreground">
+                다른 사용자들이 공유한 유용한 링크 컬렉션을 확인해보세요
+              </p>
+            </div>
+            
+            {isLoadingPublic ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="bg-muted rounded-lg aspect-video mb-3"></div>
+                    <div className="h-4 bg-muted rounded mb-2"></div>
+                    <div className="h-3 bg-muted rounded w-2/3"></div>
+                  </div>
+                ))}
+              </div>
+            ) : publicCollections.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {publicCollections.map(collection => (
+                    <CollectionCard 
+                      key={collection.id} 
+                      collection={collection} 
+                      showToggleVisibility={false}
+                    />
+                  ))}
+                </div>
+                <div className="text-center mt-12">
+                  <Button asChild variant="outline" size="lg">
+                    <Link to="/collections">더 많은 컬렉션 보기</Link>
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">아직 공개된 컬렉션이 없습니다.</p>
+                <Button asChild className="mt-4">
+                  <Link to="/signup">첫 번째 컬렉션 만들기</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Features Section */}
-        <section className="py-20 bg-muted/30 backdrop-blur-sm">
+        <section id="features" className="py-20 bg-muted/30 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4">
             <h2 className="text-3xl font-bold text-center mb-16">여기서 모든 링크를 만나고, 저장하고, 나누세요.</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -206,6 +300,8 @@ export default function Index() {
           </div>
         </section>
 
+
+
         {/* CTA Section */}
         <section className="py-20 bg-primary/5">
           <div className="max-w-4xl mx-auto px-4 text-center">
@@ -219,6 +315,7 @@ export default function Index() {
           </div>
         </section>
       </Layout>
+      </>
     );
   }
 
