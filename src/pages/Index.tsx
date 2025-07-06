@@ -8,7 +8,7 @@ import FloatingNav from "@/components/layout/FloatingNav";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Bookmark, LogIn, Settings } from "lucide-react";
+import { FileText, Bookmark, LogIn, Settings, Share2 } from "lucide-react";
 import { collectionApi } from "@/lib/supabase";
 import type { Collection } from "@/types/bookmark";
 import { BookmarkViewSettingsPanel } from "@/components/bookmark/BookmarkViewSettingsPanel";
@@ -176,28 +176,35 @@ export default function Index() {
         </section>
 
         {/* Public Collections Section */}
-        <section id="public-collections" className="py-20 bg-background">
+        <section id="public-collections" className="py-20 bg-gradient-to-b from-background to-muted/30">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">인기 컬렉션 둘러보기</h2>
-              <p className="text-lg text-muted-foreground">
-                다른 사용자들이 공유한 유용한 링크 컬렉션을 확인해보세요
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
+                <Share2 className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                인기 컬렉션 둘러보기
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                다른 사용자들이 공유한 유용한 링크 컬렉션을 확인해보세요. 
+                <br className="hidden sm:inline" />
+                새로운 아이디어와 영감을 발견할 수 있습니다.
               </p>
             </div>
             
             {isLoadingPublic ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[...Array(8)].map((_, i) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+                {[...Array(12)].map((_, i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="bg-muted rounded-lg aspect-video mb-3"></div>
-                    <div className="h-4 bg-muted rounded mb-2"></div>
-                    <div className="h-3 bg-muted rounded w-2/3"></div>
+                    <div className="bg-muted rounded-lg aspect-square mb-2"></div>
+                    <div className="h-3 bg-muted rounded mb-1"></div>
+                    <div className="h-2 bg-muted rounded w-2/3"></div>
                   </div>
                 ))}
               </div>
             ) : publicCollections.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
                   {publicCollections.map(collection => (
                     <CollectionCard 
                       key={collection.id} 
@@ -206,17 +213,29 @@ export default function Index() {
                     />
                   ))}
                 </div>
-                <div className="text-center mt-12">
-                  <Button asChild variant="outline" size="lg">
-                    <Link to="/collections">더 많은 컬렉션 보기</Link>
+                <div className="text-center mt-16">
+                  <Button asChild variant="outline" size="lg" className="px-8 py-3 rounded-full hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <Link to="/collections">
+                      <Share2 className="w-4 h-4 mr-2" />
+                      더 많은 컬렉션 보기
+                    </Link>
                   </Button>
                 </div>
               </>
             ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">아직 공개된 컬렉션이 없습니다.</p>
-                <Button asChild className="mt-4">
-                  <Link to="/signup">첫 번째 컬렉션 만들기</Link>
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted mb-6">
+                  <Share2 className="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">아직 공개된 컬렉션이 없습니다</h3>
+                <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                  지금 가입하여 첫 번째 컬렉션을 만들고 다른 사용자들과 공유해보세요!
+                </p>
+                <Button asChild className="px-8 py-3 rounded-full hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Link to="/signup">
+                    <Bookmark className="w-4 h-4 mr-2" />
+                    첫 번째 컬렉션 만들기
+                  </Link>
                 </Button>
               </div>
             )}

@@ -57,4 +57,13 @@ export interface Folder {
   icon_name?: string;
   icon_color?: string;
   icon_category?: string;
+  // 계층 구조 관련 필드 추가
+  parent_id?: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  // 계층 구조 헬퍼 필드 (런타임에 추가)
+  children?: Folder[];
+  depth?: number;
+  path?: string[];
 }

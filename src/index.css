@@ -149,6 +149,46 @@
     @apply transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1 hover:scale-[1.02];
   }
 
+  /* 컬렉션 카드 인터랙티브 효과 */
+  .collection-card-interactive {
+    @apply relative overflow-hidden;
+  }
+
+  .collection-bookmark-image {
+    @apply absolute transition-all duration-500 ease-out;
+    transform: scale(0.8) rotate(-5deg);
+    opacity: 0;
+  }
+
+  .collection-card-interactive:hover .collection-bookmark-image {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+
+  .collection-card-interactive:hover .collection-bookmark-image:nth-child(1) {
+    transition-delay: 0ms;
+  }
+
+  .collection-card-interactive:hover .collection-bookmark-image:nth-child(2) {
+    transition-delay: 100ms;
+  }
+
+  .collection-card-interactive:hover .collection-bookmark-image:nth-child(3) {
+    transition-delay: 200ms;
+  }
+
+  .collection-card-interactive:hover .collection-bookmark-image:nth-child(4) {
+    transition-delay: 300ms;
+  }
+
+  .collection-card-interactive:hover .collection-bookmark-image:nth-child(5) {
+    transition-delay: 400ms;
+  }
+
+  .collection-card-interactive:hover .collection-bookmark-image:nth-child(6) {
+    transition-delay: 500ms;
+  }
+
   /* 스켈레톤 애니메이션 개선 */
   .skeleton-animate {
     @apply animate-pulse transition-all duration-300 ease-in-out;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useBookmarks } from "@/contexts/BookmarkContext";
 import { cn } from "@/lib/utils";
@@ -38,13 +38,14 @@ interface SidebarProps {
   setIsMobileMenuOpen?: (open: boolean) => void;
 }
 
-export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen }: SidebarProps) {
-  const { folders, deleteFolder } = useBookmarks();
+const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen }: SidebarProps) {
+  const { folders, foldersTree, deleteFolder } = useBookmarks();
   const location = useLocation();
   const [foldersExpanded, setFoldersExpanded] = useState(true);
   const { isCollapsed, toggle } = useSidebarToggle();
   const [editingFolder, setEditingFolder] = useState<FolderType | null>(null);
   const [isEditFolderOpen, setIsEditFolderOpen] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   
   // Function to determine if a link is active
   const isActive = (path: string) => {
@@ -72,23 +73,143 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
 
 
 
-  const handleEditFolder = (folder: FolderType) => {
+  const handleEditFolder = useCallback((folder: FolderType) => {
     setEditingFolder(folder);
     setIsEditFolderOpen(true);
-  };
+  }, []);
 
-  const handleDeleteFolder = async (folder: FolderType) => {
+  const handleDeleteFolder = useCallback(async (folder: FolderType) => {
     if (window.confirm(`"${folder.name}" 폴더를 삭제하시겠습니까?\n폴더 내 북마크는 "모든 북마크"로 이동됩니다.`)) {
       await deleteFolder(folder.id);
     }
-  };
+  }, [deleteFolder]);
 
-  const handleLinkClick = () => {
+  const handleLinkClick = useCallback(() => {
     // 모바일에서 링크 클릭 시 사이드바 닫기
     if (isMobile && setIsMobileMenuOpen) {
       setIsMobileMenuOpen(false);
     }
-  };
+  }, [isMobile, setIsMobileMenuOpen]);
+
+  const toggleFolderExpansion = useCallback((folderId: string) => {
+    setExpandedFolders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(folderId)) {
+        newSet.delete(folderId);
+      } else {
+        newSet.add(folderId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // 재귀적으로 폴더 트리를 렌더링하는 함수 (메모이제이션)
+  const renderFolderTree = useCallback((folders: FolderType[], depth = 0): React.ReactNode => {
+    return folders.map((folder) => {
+      const folderIconInfo = getSafeIconByName(folder.icon_name || 'folder');
+      const FolderIconComponent = folderIconInfo?.icon || FolderOpen;
+      const hasChildren = folder.children && folder.children.length > 0;
+      const isExpanded = expandedFolders.has(folder.id);
+      const indentClass = depth > 0 ? `ml-${depth * 4}` : '';
+      
+      return (
+        <div key={folder.id}>
+          <div className="group relative">
+            <div className="flex items-center">
+              {/* 확장/축소 버튼 (자식이 있는 경우만) */}
+              {hasChildren && (!isCollapsed || isMobile) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-0 mr-1"
+                  onClick={() => toggleFolderExpansion(folder.id)}
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+              
+              {/* 폴더 버튼 */}
+              <Button
+                variant="ghost"
+                className={cn(
+                  "flex-1 justify-start pr-8 relative",
+                  isActive(`/folder/${folder.id}`) && "bg-accent text-accent-foreground",
+                  isCollapsed && !isMobile && "justify-center px-2 pr-2",
+                  indentClass
+                )}
+                asChild
+                onClick={handleLinkClick}
+              >
+                <Link to={`/folder/${folder.id}`}>
+                  <div className="relative">
+                    <FolderIconComponent 
+                      className={cn("h-4 w-4", isCollapsed && !isMobile ? "" : "mr-2")} 
+                      style={{ color: folder.icon_color || '#3B82F6' }}
+                    />
+                    {/* 접힌 상태에서 하위 폴더 존재 인디케이터 */}
+                    {hasChildren && isCollapsed && !isMobile && (
+                      <div 
+                        className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary/60 border border-background"
+                        title={`${folder.children?.length}개의 하위 폴더`}
+                      />
+                    )}
+                  </div>
+                  {(!isCollapsed || isMobile) && (
+                    <>
+                      <span className="flex-1 text-left truncate">{folder.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {folder.bookmarkCount}
+                      </span>
+                    </>
+                  )}
+                </Link>
+              </Button>
+              
+              {/* 더보기 메뉴 */}
+              {(!isCollapsed || isMobile) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleEditFolder(folder)}>
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      수정
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => handleDeleteFolder(folder)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      삭제
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
+          
+          {/* 자식 폴더들 재귀 렌더링 */}
+          {hasChildren && isExpanded && (
+            <div className="ml-4">
+              {renderFolderTree(folder.children!, depth + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  }, [isCollapsed, isMobile, expandedFolders, handleLinkClick, handleEditFolder, handleDeleteFolder, toggleFolderExpansion]);
 
   // 모바일에서 사이드바가 닫혀있으면 null 반환
   if (isMobile && !isMobileMenuOpen) {
@@ -174,70 +295,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
 
           {(foldersExpanded || isCollapsed) && (
             <div className="mt-1 space-y-1 px-1">
-              {folders.map((folder) => {
-                const folderIconInfo = getSafeIconByName(folder.icon_name || 'folder');
-                const FolderIconComponent = folderIconInfo?.icon || FolderOpen;
-                
-                return (
-                  <div key={folder.id} className="group relative">
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        "w-full justify-start pr-8",
-                        isActive(`/folder/${folder.id}`) && "bg-accent text-accent-foreground",
-                        isCollapsed && !isMobile && "justify-center px-2 pr-2"
-                      )}
-                      asChild
-                      onClick={handleLinkClick}
-                    >
-                      <Link to={`/folder/${folder.id}`}>
-                        <FolderIconComponent 
-                          className={cn("h-4 w-4", isCollapsed && !isMobile ? "" : "mr-2")} 
-                          style={{ color: folder.icon_color || '#3B82F6' }}
-                        />
-                        {(!isCollapsed || isMobile) && (
-                          <>
-                            <span className="flex-1 text-left truncate">{folder.name}</span>
-                            <span className="ml-auto text-xs text-muted-foreground mr-6">{folder.bookmarkCount}</span>
-                          </>
-                        )}
-                      </Link>
-                    </Button>
-                    
-                    {/* 폴더 메뉴 (접혀있지 않거나 모바일일 때만 표시) */}
-                    {(!isCollapsed || isMobile) && (
-                      <div className="absolute right-1 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={(e) => e.preventDefault()}
-                            >
-                              <MoreHorizontal className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditFolder(folder)}>
-                              <Edit3 className="mr-2 h-4 w-4" />
-                              편집
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteFolder(folder)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              삭제
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {renderFolderTree(foldersTree)}
             </div>
           )}
         </div>
@@ -284,7 +342,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
       {/* 데스크톱 사이드바 */}
       {!isMobile && (
         <aside className={cn(
-          "sidebar fixed inset-y-0 left-0 z-30 transform bg-background border-r transition-all duration-500 ease-in-out will-change-layout",
+          "sidebar fixed inset-y-0 left-0 z-30 transform bg-background border-r transition-[width] duration-300 ease-in-out will-change-transform",
           "flex flex-col h-screen pt-14",
           isCollapsed ? "w-16" : "w-64"
         )}>
@@ -318,7 +376,9 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
       )}
     </>
   );
-}
+});
+
+export default Sidebar;
 
 // 모바일 사이드바 토글 버튼 컴포넌트
 export function MobileSidebarToggle({ 

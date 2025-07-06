@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Folder, Plus } from 'lucide-react';
+import { Folder, Plus, ChevronRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { FolderIconDialog } from './FolderIconDialog';
 import { ColorPicker } from './ColorPicker';
@@ -35,15 +36,20 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
   const [selectedIcon, setSelectedIcon] = useState('folder');
   const [selectedColor, setSelectedColor] = useState('#3B82F6');
   const [selectedCategory, setSelectedCategory] = useState('default');
+  const [selectedParentId, setSelectedParentId] = useState<string>('__root__');
   
-  const { addFolder } = useBookmarks();
+  const { addFolder, getFlatFolderList } = useBookmarks();
   const { user } = useAuth();
+  
+  // 플랫한 폴더 목록 (부모 폴더 선택용)
+  const flatFolders = getFlatFolderList();
 
   const resetForm = () => {
     setFolderName('');
     setSelectedIcon('folder');
     setSelectedColor('#3B82F6');
     setSelectedCategory('default');
+    setSelectedParentId('__root__');
   };
 
   const handleIconSelect = (iconName: string, iconCategory: string) => {
@@ -64,7 +70,13 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
 
     setIsLoading(true);
     try {
-      await addFolder(folderName.trim(), selectedIcon, selectedColor, selectedCategory);
+      await addFolder(
+        folderName.trim(), 
+        selectedIcon, 
+        selectedColor, 
+        selectedCategory, 
+        selectedParentId === '__root__' ? undefined : selectedParentId
+      );
       
       toast.success(`"${folderName}" 폴더가 생성되었습니다.`);
       setOpen(false);
@@ -153,6 +165,51 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
 
             <Separator />
             
+            {/* 부모 폴더 선택 */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">위치 선택</Label>
+              <Select value={selectedParentId} onValueChange={setSelectedParentId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="루트 폴더 (최상위)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__root__">
+                    <div className="flex items-center">
+                      <Folder className="h-4 w-4 mr-2 text-muted-foreground" />
+                      루트 폴더 (최상위)
+                    </div>
+                  </SelectItem>
+                  {flatFolders.map((folder) => (
+                    <SelectItem key={folder.id} value={folder.id}>
+                      <div className="flex items-center">
+                        <div style={{ marginLeft: `${(folder.depth || 0) * 16}px` }}>
+                          {folder.depth && folder.depth > 0 && (
+                            <ChevronRight className="h-3 w-3 text-muted-foreground inline mr-1" />
+                          )}
+                          {(() => {
+                            const folderIconInfo = getSafeIconByName(folder.icon_name || 'folder');
+                            const FolderIconComponent = folderIconInfo?.icon || Folder;
+                            return (
+                              <FolderIconComponent 
+                                className="h-4 w-4 mr-2 inline" 
+                                style={{ color: folder.icon_color || '#3B82F6' }}
+                              />
+                            );
+                          })()}
+                          <span>{folder.name}</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-xs text-muted-foreground">
+                새 폴더가 생성될 위치를 선택하세요
+              </div>
+            </div>
+
+            <Separator />
+            
             {/* 아이콘 및 색상 선택 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 아이콘 선택 */}
@@ -213,6 +270,17 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
                     <div className="text-sm text-muted-foreground mt-1">
                       <span className="capitalize">{selectedCategory}</span> 카테고리 · {selectedIconInfo?.label || selectedIcon} 아이콘
                     </div>
+                    {selectedParentId !== '__root__' ? (
+                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <ChevronRight className="w-3 h-3" />
+                        위치: {flatFolders.find(f => f.id === selectedParentId)?.name || '알 수 없음'}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <Folder className="w-3 h-3" />
+                        위치: 루트 폴더 (최상위)
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                       <div 
                         className="w-2 h-2 rounded-full" 

@@ -389,7 +389,7 @@ export const folderApi = {
       console.log('[folderApi.list] supabase.from 호출 직전');
       const { data, error } = await supabase
         .from('folders')
-        .select('id, name, icon_name, icon_color, icon_category')
+        .select('id, name, icon_name, icon_color, icon_category, parent_id, user_id, created_at, updated_at')
         .eq('user_id', userId)
         .order('name');
       console.log('[folderApi.list] supabase.from 호출 결과:', { data, error });
@@ -411,7 +411,7 @@ export const folderApi = {
     const folder = { 
       name, 
       user_id: userId, 
-      parent_folder_id: parentId ?? null,
+      parent_id: parentId ?? null,
       icon_name: iconName ?? 'folder',
       icon_color: iconColor ?? '#3B82F6',
       icon_category: iconCategory ?? 'default'
@@ -429,7 +429,7 @@ export const folderApi = {
     return data;
   },
 
-  async update(id: string, updates: { name?: string; parent_folder_id?: string | null; icon_name?: string; icon_color?: string; icon_category?: string }) {
+  async update(id: string, updates: { name?: string; parent_id?: string | null; icon_name?: string; icon_color?: string; icon_category?: string }) {
     const { data, error } = await supabase
       .from('folders')
       .update(updates)

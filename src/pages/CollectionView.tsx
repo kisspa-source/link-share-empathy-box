@@ -183,11 +183,11 @@ export default function CollectionView() {
                 </div>
                 
                 <div className="flex gap-2">
-                  {/* 정렬 기준 선택 */}
-                  <BookmarkSortSelector className="hidden md:flex" />
+                  {/* 정렬 기준 선택 - 항상 표시 */}
+                  <BookmarkSortSelector />
                   
-                  {/* 뷰 모드 선택 (컴팩트) */}
-                  <BookmarkViewSelector dropdown className="hidden md:flex" />
+                  {/* 뷰 모드 선택 - 항상 표시 */}
+                  <BookmarkViewSelector dropdown />
                   
                   {/* 설정 패널 토글 버튼 */}
                   <Button 
@@ -199,23 +199,20 @@ export default function CollectionView() {
                     <Settings className="h-4 w-4" />
                   </Button>
                   
+                  {/* 공유 버튼 */}
                   <Button
                     onClick={handleCopyShareUrl}
                     disabled={!collection.isPublic}
                     variant="outline"
-                    className="w-full md:w-auto"
+                    size="icon"
+                    className="h-10 w-10"
+                    title="공유"
                   >
-                    <Share2 className="mr-2 h-4 w-4" /> 공유
+                    <Share2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* 모바일용 정렬 기준 및 뷰 모드 선택 */}
-          <div className="md:hidden space-y-4">
-            <BookmarkSortSelector />
-            <BookmarkViewSelector />
           </div>
 
           {/* 설정 패널 */}

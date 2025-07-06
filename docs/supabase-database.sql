@@ -51,14 +51,14 @@ CREATE TABLE public.folders (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name text NOT NULL,
   user_id uuid NOT NULL,
-  parent_folder_id uuid,
+  parent_id uuid,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   icon_name character varying DEFAULT 'folder'::character varying,
   icon_color character varying DEFAULT '#3B82F6'::character varying,
   icon_category character varying DEFAULT 'default'::character varying,
   CONSTRAINT folders_pkey PRIMARY KEY (id),
-  CONSTRAINT folders_parent_folder_id_fkey FOREIGN KEY (parent_folder_id) REFERENCES public.folders(id),
+  CONSTRAINT folders_parent_folder_id_fkey FOREIGN KEY (parent_id) REFERENCES public.folders(id),
   CONSTRAINT folders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.profiles (

@@ -574,6 +574,31 @@ export default function BookmarkGrid({
     }
   }, [isCollapsed, isAuthenticated, viewMode]);
 
+  // 윈도우 리사이즈 이벤트 감지하여 레이아웃 재조정
+  useEffect(() => {
+    const handleResize = () => {
+      if (viewMode === 'card') {
+        setIsLayoutAnimating(true);
+        
+        const newGridClass = isAuthenticated && isCollapsed 
+          ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7"
+          : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6";
+        
+        setGridClass(newGridClass);
+        
+        setTimeout(() => {
+          setIsLayoutAnimating(false);
+        }, 100); // 더 빠른 반응을 위해 짧은 딜레이
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isCollapsed, isAuthenticated, viewMode]);
+
   // 최종 그리드 클래스 (카드 뷰용)
   const finalGridClasses = cn(
     "gap-4 transition-all duration-500 ease-in-out",

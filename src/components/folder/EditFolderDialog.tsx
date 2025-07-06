@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Folder, Save, X } from 'lucide-react';
+import { Folder, Save, X, ChevronRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { FolderIconDialog } from './FolderIconDialog';
 import { ColorPicker } from './ColorPicker';
@@ -36,9 +37,16 @@ export function EditFolderDialog({ open, onOpenChange, folder, className }: Edit
   const [selectedIcon, setSelectedIcon] = useState(folder.icon_name || 'folder');
   const [selectedColor, setSelectedColor] = useState(folder.icon_color || '#3B82F6');
   const [selectedCategory, setSelectedCategory] = useState(folder.icon_category || 'default');
+  const [selectedParentId, setSelectedParentId] = useState<string>(folder.parent_id || '__root__');
   
-  const { updateFolder } = useBookmarks();
+  const { updateFolder, getFlatFolderList } = useBookmarks();
   const { user } = useAuth();
+  
+  // 플랫한 폴더 목록 (부모 폴더 선택용) - 자기 자신과 하위 폴더들은 제외
+  const flatFolders = getFlatFolderList().filter(f => 
+    f.id !== folder.id && 
+    !f.path?.includes(folder.name) // 현재 폴더의 하위 폴더 제외
+  );
 
   // 폴더 정보가 변경되면 상태 업데이트
   useEffect(() => {
@@ -46,6 +54,7 @@ export function EditFolderDialog({ open, onOpenChange, folder, className }: Edit
     setSelectedIcon(folder.icon_name || 'folder');
     setSelectedColor(folder.icon_color || '#3B82F6');
     setSelectedCategory(folder.icon_category || 'default');
+    setSelectedParentId(folder.parent_id || '__root__');
   }, [folder]);
 
   const resetForm = () => {
@@ -53,6 +62,7 @@ export function EditFolderDialog({ open, onOpenChange, folder, className }: Edit
     setSelectedIcon(folder.icon_name || 'folder');
     setSelectedColor(folder.icon_color || '#3B82F6');
     setSelectedCategory(folder.icon_category || 'default');
+    setSelectedParentId(folder.parent_id || '__root__');
   };
 
   const handleIconSelect = (iconName: string, iconCategory: string) => {
@@ -76,7 +86,8 @@ export function EditFolderDialog({ open, onOpenChange, folder, className }: Edit
       folderName.trim() !== folder.name ||
       selectedIcon !== (folder.icon_name || 'folder') ||
       selectedColor !== (folder.icon_color || '#3B82F6') ||
-      selectedCategory !== (folder.icon_category || 'default');
+      selectedCategory !== (folder.icon_category || 'default') ||
+      selectedParentId !== (folder.parent_id || '__root__');
 
     if (!hasChanges) {
       toast.info('변경된 내용이 없습니다.');
@@ -90,7 +101,8 @@ export function EditFolderDialog({ open, onOpenChange, folder, className }: Edit
         name: folderName.trim(),
         icon_name: selectedIcon,
         icon_color: selectedColor,
-        icon_category: selectedCategory
+        icon_category: selectedCategory,
+        parent_id: selectedParentId === '__root__' ? undefined : selectedParentId
       });
       
       toast.success(`"${folderName}" 폴더가 수정되었습니다.`);
@@ -166,6 +178,51 @@ export function EditFolderDialog({ open, onOpenChange, folder, className }: Edit
                   ✓ 폴더 이름이 입력되었습니다
                 </div>
               )}
+            </div>
+
+            <Separator />
+            
+            {/* 부모 폴더 선택 */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">위치 변경</Label>
+              <Select value={selectedParentId} onValueChange={setSelectedParentId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="루트 폴더 (최상위)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__root__">
+                    <div className="flex items-center">
+                      <Folder className="h-4 w-4 mr-2 text-muted-foreground" />
+                      루트 폴더 (최상위)
+                    </div>
+                  </SelectItem>
+                  {flatFolders.map((parentFolder) => (
+                    <SelectItem key={parentFolder.id} value={parentFolder.id}>
+                      <div className="flex items-center">
+                        <div style={{ marginLeft: `${(parentFolder.depth || 0) * 16}px` }}>
+                          {parentFolder.depth && parentFolder.depth > 0 && (
+                            <ChevronRight className="h-3 w-3 text-muted-foreground inline mr-1" />
+                          )}
+                          {(() => {
+                            const folderIconInfo = getSafeIconByName(parentFolder.icon_name || 'folder');
+                            const FolderIconComponent = folderIconInfo?.icon || Folder;
+                            return (
+                              <FolderIconComponent 
+                                className="h-4 w-4 mr-2 inline" 
+                                style={{ color: parentFolder.icon_color || '#3B82F6' }}
+                              />
+                            );
+                          })()}
+                          <span>{parentFolder.name}</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-xs text-muted-foreground">
+                폴더를 이동할 위치를 선택하세요. 현재 폴더의 하위 폴더로는 이동할 수 없습니다.
+              </div>
             </div>
 
             <Separator />

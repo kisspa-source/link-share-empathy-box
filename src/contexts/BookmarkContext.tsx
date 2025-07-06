@@ -17,6 +17,7 @@ interface BookmarkContextType {
   bookmarks: Bookmark[];
   collections: Collection[];
   folders: Folder[];
+  foldersTree: Folder[]; // 계층 구조로 정렬된 폴더 목록
   tags: Tag[];
   allTags: string[]; // 모든 북마크에서 사용된 태그들의 유니크한 목록
   isLoading: boolean;
@@ -27,12 +28,13 @@ interface BookmarkContextType {
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
   deleteCollection: (id: string) => Promise<void>;
   toggleCollectionPublic: (id: string, nextPublic: boolean) => Promise<void>;
-  addFolder: (name: string, iconName?: string, iconColor?: string, iconCategory?: string) => Promise<void>;
-  updateFolder: (id: string, updates: { name?: string; icon_name?: string; icon_color?: string; icon_category?: string }) => Promise<void>;
+  addFolder: (name: string, iconName?: string, iconColor?: string, iconCategory?: string, parentId?: string) => Promise<void>;
+  updateFolder: (id: string, updates: { name?: string; icon_name?: string; icon_color?: string; icon_category?: string; parent_id?: string }) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
   getBookmarksByFolder: (folderId?: string) => Bookmark[];
   getCollection: (id: string) => Collection | undefined;
   getUserCollections: (userId: string) => Collection[];
+  getFlatFolderList: () => Folder[]; // 부모 폴더 선택을 위한 플랫 목록
   refreshData: () => void;
 }
 
@@ -43,6 +45,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [foldersTree, setFoldersTree] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +54,65 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
   const isLoadingData = useRef(false);
   const lastLoadedUserId = useRef<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // 폴더를 계층 구조로 변환하는 함수
+  const buildFoldersTree = useCallback((folders: Folder[]): Folder[] => {
+    const folderMap = new Map<string, Folder>();
+    const rootFolders: Folder[] = [];
+
+    // 폴더 맵 생성 및 children 초기화
+    folders.forEach(folder => {
+      folderMap.set(folder.id, { ...folder, children: [], depth: 0, path: [] });
+    });
+
+    // 계층 구조 구성
+    folders.forEach(folder => {
+      const folderWithChildren = folderMap.get(folder.id);
+      if (!folderWithChildren) return;
+
+      if (folder.parent_id) {
+        const parent = folderMap.get(folder.parent_id);
+        if (parent) {
+          parent.children = parent.children || [];
+          parent.children.push(folderWithChildren);
+          // depth와 path 설정
+          folderWithChildren.depth = (parent.depth || 0) + 1;
+          folderWithChildren.path = [...(parent.path || []), parent.name];
+        } else {
+          // 부모가 없는 경우 루트로 처리
+          rootFolders.push(folderWithChildren);
+        }
+      } else {
+        // 루트 폴더
+        rootFolders.push(folderWithChildren);
+      }
+    });
+
+    // 정렬 함수 (알파벳 순)
+    const sortFolders = (folders: Folder[]): Folder[] => {
+      return folders.sort((a, b) => a.name.localeCompare(b.name)).map(folder => ({
+        ...folder,
+        children: folder.children ? sortFolders(folder.children) : []
+      }));
+    };
+
+    return sortFolders(rootFolders);
+  }, []);
+
+  // 플랫한 폴더 목록 반환 (부모 폴더 선택용)
+  const getFlatFolderList = useCallback((): Folder[] => {
+    const flattenFolders = (folders: Folder[], depth = 0): Folder[] => {
+      const result: Folder[] = [];
+      folders.forEach(folder => {
+        result.push({ ...folder, depth });
+        if (folder.children && folder.children.length > 0) {
+          result.push(...flattenFolders(folder.children, depth + 1));
+        }
+      });
+      return result;
+    };
+    return flattenFolders(foldersTree);
+  }, [foldersTree]);
   
   // 안전한 favicon 생성 함수 (컴포넌트 내 공통 함수)
   const generateSafeFavicon = (domain: string) => {
@@ -146,9 +208,14 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
             bookmarkCount: 0, // 북마크 로딩 후 업데이트
             icon_name: f.icon_name || 'folder',
             icon_color: f.icon_color || '#3B82F6',
-            icon_category: f.icon_category || 'default'
+            icon_category: f.icon_category || 'default',
+            parent_id: f.parent_id,
+            user_id: f.user_id,
+            created_at: f.created_at,
+            updated_at: f.updated_at
           }));
           setFolders(formattedFolders);
+          setFoldersTree(buildFoldersTree(formattedFolders));
         } else {
           console.error('폴더 로딩 실패:', foldersResult.reason);
           toast.error('폴더를 불러오는 중 오류가 발생했습니다.');
@@ -608,22 +675,23 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addFolder = async (name: string, iconName?: string, iconColor?: string, iconCategory?: string) => {
-    console.log('[addFolder] 폴더 생성 요청:', { name, iconName, iconColor, iconCategory });
+  const addFolder = async (name: string, iconName?: string, iconColor?: string, iconCategory?: string, parentId?: string) => {
+    console.log('[addFolder] 폴더 생성 요청:', { name, iconName, iconColor, iconCategory, parentId });
     if (!user) {
       console.error('[addFolder] 로그인 필요');
       toast.error('로그인이 필요합니다');
       return;
     }
-    // 중복 폴더명 체크
-    if (folders.some(f => f.name === name)) {
+    // 중복 폴더명 체크 (같은 부모 폴더 내에서만)
+    const actualParentId = parentId === '__root__' ? undefined : parentId;
+    if (folders.some(f => f.name === name && f.parent_id === actualParentId)) {
       console.warn('[addFolder] 중복 폴더명:', name);
-      toast.error('중복된 폴더명이 존재합니다');
+      toast.error('같은 위치에 중복된 폴더명이 존재합니다');
       return;
     }
     try {
-      console.log('[addFolder] Supabase에 폴더 생성 요청:', name, user.id);
-      const newFolder = await folderApi.create(name, user.id, undefined, iconName, iconColor, iconCategory);
+      console.log('[addFolder] Supabase에 폴더 생성 요청:', name, user.id, actualParentId);
+      const newFolder = await folderApi.create(name, user.id, actualParentId, iconName, iconColor, iconCategory);
       console.log('[addFolder] Supabase 폴더 생성 성공:', newFolder);
       
       // 새 폴더를 상태에 즉시 추가
@@ -633,10 +701,18 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         bookmarkCount: 0,
         icon_name: newFolder.icon_name || 'folder',
         icon_color: newFolder.icon_color || '#3B82F6',
-        icon_category: newFolder.icon_category || 'default'
+        icon_category: newFolder.icon_category || 'default',
+        parent_id: newFolder.parent_id,
+        user_id: newFolder.user_id,
+        created_at: newFolder.created_at,
+        updated_at: newFolder.updated_at
       };
       
-      setFolders(prev => [...prev, formattedFolder]);
+      setFolders(prev => {
+        const newFolders = [...prev, formattedFolder];
+        setFoldersTree(buildFoldersTree(newFolders));
+        return newFolders;
+      });
       console.log('[addFolder] 폴더 상태 업데이트 완료');
       toast.success('폴더가 생성되었습니다');
     } catch (error) {
@@ -645,7 +721,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateFolder = async (id: string, updates: { name?: string; icon_name?: string; icon_color?: string; icon_category?: string }) => {
+  const updateFolder = async (id: string, updates: { name?: string; icon_name?: string; icon_color?: string; icon_category?: string; parent_id?: string }) => {
     console.log('[updateFolder] 폴더 수정 요청:', { id, updates });
     if (!user) {
       console.error('[updateFolder] 로그인 필요');
@@ -654,10 +730,16 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     }
     
     // 중복 폴더명 체크 (이름이 변경되는 경우)
-    if (updates.name && folders.some(f => f.id !== id && f.name === updates.name)) {
-      console.warn('[updateFolder] 중복 폴더명:', updates.name);
-      toast.error('중복된 폴더명이 존재합니다');
-      return;
+    if (updates.name) {
+      const targetParentId = updates.parent_id !== undefined ? 
+        (updates.parent_id === '__root__' ? undefined : updates.parent_id) : 
+        folders.find(f => f.id === id)?.parent_id;
+      
+      if (folders.some(f => f.id !== id && f.name === updates.name && f.parent_id === targetParentId)) {
+        console.warn('[updateFolder] 중복 폴더명:', updates.name);
+        toast.error('같은 위치에 중복된 폴더명이 존재합니다');
+        return;
+      }
     }
     
     try {
@@ -666,17 +748,22 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       console.log('[updateFolder] Supabase 폴더 수정 성공:', updatedFolder);
       
       // 폴더 상태 업데이트
-      setFolders(prev => prev.map(folder => 
-        folder.id === id 
-          ? {
-              ...folder,
-              name: updates.name ?? folder.name,
-              icon_name: updates.icon_name ?? folder.icon_name,
-              icon_color: updates.icon_color ?? folder.icon_color,
-              icon_category: updates.icon_category ?? folder.icon_category
-            }
-          : folder
-      ));
+      setFolders(prev => {
+        const updatedFolders = prev.map(folder => 
+          folder.id === id 
+            ? {
+                ...folder,
+                name: updates.name ?? folder.name,
+                icon_name: updates.icon_name ?? folder.icon_name,
+                icon_color: updates.icon_color ?? folder.icon_color,
+                icon_category: updates.icon_category ?? folder.icon_category,
+                parent_id: updates.parent_id !== undefined ? updates.parent_id : folder.parent_id
+              }
+            : folder
+        );
+        setFoldersTree(buildFoldersTree(updatedFolders));
+        return updatedFolders;
+      });
       
       console.log('[updateFolder] 폴더 상태 업데이트 완료');
       toast.success('폴더가 수정되었습니다');
@@ -693,7 +780,11 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     }
     try {
       await folderApi.delete(id)
-      setFolders(prev => prev.filter(folder => folder.id !== id))
+      setFolders(prev => {
+        const filteredFolders = prev.filter(folder => folder.id !== id);
+        setFoldersTree(buildFoldersTree(filteredFolders));
+        return filteredFolders;
+      });
       setBookmarks(prev => prev.map(bookmark =>
         bookmark.folder_id === id
           ? { ...bookmark, folder_id: undefined }
@@ -728,6 +819,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       bookmarks: isLoading ? [] : bookmarks,
       collections: isLoading ? [] : collections,
       folders: isLoading ? [] : folders,
+      foldersTree: isLoading ? [] : foldersTree,
       tags,
       allTags,
       isLoading,
@@ -744,6 +836,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       getBookmarksByFolder,
       getCollection,
       getUserCollections,
+      getFlatFolderList,
       refreshData
     }}>
       {children}

@@ -37,9 +37,34 @@ export default function CollectionsList() {
       
       return () => clearTimeout(timer);
     } else {
-      // 비로그인 사용자는 기본 그리드 사용
-      setGridClass("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5");
+      // 비로그인 사용자는 기본 그리드 사용 (콤팩트한 카드에 맞춰 더 많은 컬럼)
+      setGridClass("grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8");
     }
+  }, [isCollapsed, session]);
+
+  // 윈도우 리사이즈 이벤트 감지하여 레이아웃 재조정
+  useEffect(() => {
+    const handleResize = () => {
+      if (session) {
+        setIsLayoutAnimating(true);
+        
+        const newGridClass = isCollapsed 
+          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+          : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5";
+        
+        setGridClass(newGridClass);
+        
+        setTimeout(() => {
+          setIsLayoutAnimating(false);
+        }, 100);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, [isCollapsed, session]);
 
   useEffect(() => {
@@ -103,12 +128,12 @@ export default function CollectionsList() {
 
           {loading ? (
             <div className={finalGridClasses}>
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="bg-card border rounded-lg overflow-hidden">
-                  <div className="h-40 w-full bg-muted animate-pulse" />
-                  <div className="p-4 space-y-2">
-                    <div className="h-5 w-3/4 bg-muted animate-pulse rounded" />
-                    <div className="h-4 w-full bg-muted animate-pulse rounded" />
+                  <div className="aspect-square w-full bg-muted animate-pulse" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+                    <div className="h-3 w-full bg-muted animate-pulse rounded" />
                   </div>
                 </div>
               ))}

@@ -87,6 +87,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         appMetadata: userData.app_metadata
       });
       
+      // 기본 사용자 정보 (user_metadata 기반)
       let newUser = {
         id: userData.id,
         email: userData.email || '',
@@ -100,8 +101,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         provider: userData.app_metadata?.provider || 'email'
       };
 
-      // profiles 테이블 접근 제거 - user_metadata만 사용 (성능 최적화)
-      console.log('[handleSession] user_metadata에서 프로필 정보 사용 (profiles 테이블 접근 제거)');
+      // profiles 테이블에서 사용자 설정 정보 조회 (닉네임 우선 적용)
+      try {
+        console.log('[handleSession] profiles 테이블에서 사용자 정보 조회 중...');
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('nickname, avatar_url')
+          .eq('id', userData.id)
+          .single();
+
+        if (!profileError && profile) {
+          console.log('[handleSession] 프로필 정보 조회 성공:', profile);
+          // profiles 테이블의 닉네임이 있으면 우선 사용
+          if (profile.nickname && profile.nickname.trim()) {
+            newUser.nickname = profile.nickname;
+          }
+          // profiles 테이블의 아바타가 있으면 우선 사용
+          if (profile.avatar_url) {
+            newUser.avatarUrl = profile.avatar_url;
+          }
+        } else if (profileError && profileError.code === 'PGRST116') {
+          // 프로필이 없는 경우 새로 생성
+          console.log('[handleSession] 프로필이 없어 새로 생성합니다.');
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userData.id,
+              nickname: newUser.nickname,
+              avatar_url: newUser.avatarUrl,
+            });
+          
+          if (insertError) {
+            console.warn('[handleSession] 프로필 생성 실패:', insertError);
+          } else {
+            console.log('[handleSession] 프로필 생성 성공');
+          }
+        } else {
+          console.warn('[handleSession] 프로필 조회 오류:', profileError);
+        }
+      } catch (profileFetchError) {
+        console.warn('[handleSession] 프로필 조회 중 오류 발생:', profileFetchError);
+        // 오류 발생 시 user_metadata 정보로 진행
+      }
       
       console.log('[handleSession] 프로필 데이터 처리 완료. 최종 newUser:', newUser);
 
