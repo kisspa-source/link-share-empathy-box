@@ -8,9 +8,10 @@ import { useState } from "react";
 import AddBookmarkDialog from "@/components/bookmark/AddBookmarkDialog";
 import { BookmarkViewSettingsPanel } from "@/components/bookmark/BookmarkViewSettingsPanel";
 import { BookmarkViewSelector } from "@/components/bookmark/BookmarkViewSelector";
+import { BookmarkSortSelector } from "@/components/bookmark/BookmarkSortSelector";
 import { EditFolderDialog } from "@/components/folder/EditFolderDialog";
 import { Settings, Filter, Edit3 } from "lucide-react";
-import { getIconByName } from "@/lib/icons";
+import { getSafeIconByName } from "@/lib/icons";
 
 export default function FolderView() {
   const { folderId } = useParams();
@@ -45,12 +46,12 @@ export default function FolderView() {
   }
 
   // 폴더 아이콘 정보
-  const folderIconInfo = getIconByName(folder?.icon_name || 'folder');
+  const folderIconInfo = getSafeIconByName(folder?.icon_name || 'folder');
   const FolderIconComponent = folderIconInfo?.icon;
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -69,9 +70,13 @@ export default function FolderView() {
             </p>
           </div>
           
+          {/* 뷰 모드 선택기와 설정 아이콘 */}
           <div className="flex gap-2">
-            {/* 뷰 모드 선택 (컴팩트) */}
-            <BookmarkViewSelector compact className="hidden md:flex" />
+            {/* 정렬 기준 선택 - 항상 표시 */}
+            <BookmarkSortSelector />
+            
+            {/* 뷰 모드 선택 - 항상 표시 */}
+            <BookmarkViewSelector dropdown />
             
             {/* 설정 패널 토글 버튼 */}
             <Button 
@@ -102,11 +107,6 @@ export default function FolderView() {
               북마크 추가
             </Button>
           </div>
-        </div>
-
-        {/* 모바일용 뷰 모드 선택 */}
-        <div className="md:hidden">
-          <BookmarkViewSelector />
         </div>
 
         {/* 설정 패널 */}

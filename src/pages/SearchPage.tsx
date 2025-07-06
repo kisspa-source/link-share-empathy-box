@@ -15,6 +15,7 @@ import { Bookmark, Category } from "@/types/bookmark";
 import { Search, Filter, Settings } from "lucide-react";
 import { BookmarkViewSettingsPanel } from "@/components/bookmark/BookmarkViewSettingsPanel";
 import { BookmarkViewSelector } from "@/components/bookmark/BookmarkViewSelector";
+import { BookmarkSortSelector } from "@/components/bookmark/BookmarkSortSelector";
 
 export default function SearchPage() {
   const { bookmarks, tags, isLoading } = useBookmarks();
@@ -43,9 +44,8 @@ export default function SearchPage() {
       if (searchTerm) {
         results = results.filter(bookmark => 
           bookmark.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          bookmark.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          bookmark.url.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (bookmark.memo && bookmark.memo.toLowerCase().includes(searchTerm.toLowerCase()))
+                      bookmark.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            bookmark.url.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
       
@@ -86,8 +86,11 @@ export default function SearchPage() {
           </div>
           
           <div className="flex gap-2">
+            {/* 정렬 기준 선택 */}
+            <BookmarkSortSelector className="hidden md:flex" />
+            
             {/* 뷰 모드 선택 (컴팩트) */}
-            <BookmarkViewSelector compact className="hidden md:flex" />
+            <BookmarkViewSelector dropdown className="hidden md:flex" />
             
             {/* 설정 패널 토글 버튼 */}
             <Button 
@@ -101,8 +104,9 @@ export default function SearchPage() {
           </div>
         </div>
 
-        {/* 모바일용 뷰 모드 선택 */}
-        <div className="md:hidden">
+        {/* 모바일용 정렬 기준 및 뷰 모드 선택 */}
+        <div className="md:hidden space-y-4">
+          <BookmarkSortSelector />
           <BookmarkViewSelector />
         </div>
 

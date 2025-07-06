@@ -30,7 +30,6 @@ export interface Bookmark {
   favicon?: string;
   category?: Category;
   tags: string[]; // Supabase에서는 string[]로 저장됨
-  memo?: string;
   folder_id?: string;
   saved_by?: number; // Number of users who saved this bookmark
 }

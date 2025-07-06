@@ -16,10 +16,12 @@ import {
   MoreHorizontal, 
   Trash2,
   Copy,
-  Users
+  Users,
+  Edit
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBookmarks } from "@/contexts/BookmarkContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -27,6 +29,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import EditBookmarkDialog from "./EditBookmarkDialog";
+import DeleteBookmarkDialog from "./DeleteBookmarkDialog";
 
 interface BookmarkCardProps {
   bookmark: Bookmark;
@@ -34,10 +38,15 @@ interface BookmarkCardProps {
 
 export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
   const { deleteBookmark } = useBookmarks();
+  const { user } = useAuth();
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [faviconLoadError, setFaviconLoadError] = useState(false);
+  
+  const canModifyBookmark = user && bookmark.user_id === user.id;
 
   const handleDelete = () => {
     setShowDeleteDialog(true);
@@ -91,7 +100,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
 
   return (
     <>
-      <Card className="overflow-hidden bookmark-card-hover">
+      <Card className="overflow-hidden bookmark-card-hover group">
         <CardContent className="p-0">
           <a 
             href={bookmark.url} 
@@ -99,7 +108,37 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
             rel="noopener noreferrer"
             className="block"
           >
-            <div className="relative">
+            <div className="relative">{/* 수정/삭제 버튼 */}
+              {canModifyBookmark && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <div className="flex gap-1 bg-background/80 backdrop-blur-sm rounded-md p-1 border">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
               {/* image_url을 우선적으로 사용하고, 없으면 thumbnail 사용 */}
               {hasImage ? (
                 <div className="aspect-[4/3] w-full overflow-hidden">
@@ -119,7 +158,8 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
               
               <Badge 
                 className={cn(
-                  "absolute top-2 right-2 font-normal",
+                  "absolute top-2 font-normal",
+                  canModifyBookmark ? "left-2" : "right-2",
                   categoryColors[bookmark.category]
                 )}
               >
@@ -184,11 +224,7 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
               </div>
             )}
             
-            {bookmark.memo && (
-              <div className="text-xs bg-accent/50 p-2 rounded-md mt-2">
-                {bookmark.memo}
-              </div>
-            )}
+
           </div>
         </CardContent>
         
@@ -224,11 +260,19 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
                   <Copy className="mr-2 h-4 w-4" />
                   URL 복사
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  삭제
-                </DropdownMenuItem>
+                {canModifyBookmark && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      수정
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      삭제
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -283,6 +327,18 @@ export default function BookmarkCard({ bookmark }: BookmarkCardProps) {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* 수정/삭제 Dialog */}
+      <EditBookmarkDialog 
+        open={editDialogOpen} 
+        onOpenChange={setEditDialogOpen}
+        bookmark={bookmark}
+      />
+      <DeleteBookmarkDialog 
+        open={deleteDialogOpen} 
+        onOpenChange={setDeleteDialogOpen}
+        bookmark={bookmark}
+      />
     </>
   );
 }

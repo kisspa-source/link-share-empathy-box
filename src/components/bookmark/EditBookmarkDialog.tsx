@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBookmarks } from "@/contexts/BookmarkContext";
+import { Bookmark } from "@/types/bookmark";
 import {
   Dialog,
   DialogContent,
@@ -19,32 +20,54 @@ import {
 import { Link } from "lucide-react";
 import TagAutocomplete from "./TagAutocomplete";
 
-interface AddBookmarkDialogProps {
+interface EditBookmarkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  bookmark: Bookmark | null;
 }
 
-export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps) {
-  const { folders, addBookmark, isLoading, allTags } = useBookmarks();
-  const [url, setUrl] = useState("");
+export default function EditBookmarkDialog({ open, onOpenChange, bookmark }: EditBookmarkDialogProps) {
+  const { folders, updateBookmark, isLoading, allTags } = useBookmarks();
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [folderId, setFolderId] = useState<string>("__no_folder__");
-  const [isAdding, setIsAdding] = useState(false);
+  const [folderId, setFolderId] = useState<string>("");
+  const [isUpdating, setIsUpdating] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
 
-  const handleSubmit = async () => {
-    if (!url.trim()) return;
-    
-    setIsAdding(true);
-    try {
-      await addBookmark(url, description, folderId === "__no_folder__" ? undefined : folderId, tags);
-      setUrl("");
+  // 북마크 데이터로 폼 초기화
+  useEffect(() => {
+    if (bookmark) {
+      setTitle(bookmark.title || "");
+      setDescription(bookmark.description || "");
+      setFolderId(bookmark.folder_id || "__no_folder__");
+      setTags(Array.isArray(bookmark.tags) ? bookmark.tags : []);
+    }
+  }, [bookmark]);
+
+  // 다이얼로그가 닫힐 때 폼 초기화
+  useEffect(() => {
+    if (!open) {
+      setTitle("");
       setDescription("");
       setFolderId("__no_folder__");
       setTags([]);
+    }
+  }, [open]);
+
+  const handleSubmit = async () => {
+    if (!bookmark) return;
+    
+    setIsUpdating(true);
+    try {
+      await updateBookmark(bookmark.id, {
+        title,
+        description,
+        tags,
+        folder_id: folderId === "__no_folder__" ? undefined : folderId
+      });
       onOpenChange(false);
     } finally {
-      setIsAdding(false);
+      setIsUpdating(false);
     }
   };
 
@@ -52,24 +75,35 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>새 북마크 추가</DialogTitle>
+          <DialogTitle>북마크 수정</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="flex items-center space-x-2">
             <Link className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <div className="flex-1">
+              <div className="text-sm text-muted-foreground mb-1">URL</div>
+              <div className="text-sm truncate p-2 bg-muted rounded border">
+                {bookmark?.url}
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium mb-1 block">제목</label>
             <Input
-              placeholder="https://example.com"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={isAdding}
+              placeholder="북마크 제목"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={isUpdating}
             />
           </div>
           
           <div>
+            <label className="text-sm font-medium mb-1 block">폴더</label>
             <Select
               value={folderId}
               onValueChange={(value) => setFolderId(value)}
-              disabled={isAdding}
+              disabled={isUpdating}
             >
               <SelectTrigger>
                 <SelectValue placeholder="폴더 선택 (선택사항)" />
@@ -86,33 +120,23 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
           </div>
           
           <div>
+            <label className="text-sm font-medium mb-1 block">설명/메모</label>
             <Textarea
-              placeholder="설명 (선택사항)"
+              placeholder="북마크 설명이나 개인 메모를 입력하세요"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[80px]"
-              disabled={isAdding}
+              className="min-h-[100px]"
+              disabled={isUpdating}
             />
           </div>
           
-          <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span className="font-medium">빠른 저장</span>
-            </div>
-            <p className="mt-1 text-xs">
-              북마크가 즉시 저장됩니다. 메타데이터는 백그라운드에서 자동으로 업데이트됩니다.
-            </p>
-          </div>
-          
           <div>
+            <label className="text-sm font-medium mb-1 block">태그</label>
             <TagAutocomplete 
               tags={tags}
               allTags={allTags}
               onTagsChange={setTags}
-              disabled={isAdding}
+              disabled={isUpdating}
             />
           </div>
         </div>
@@ -120,27 +144,22 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isAdding}
+            disabled={isUpdating}
           >
             취소
           </Button>
-          <Button onClick={handleSubmit} disabled={!url.trim() || isAdding || isLoading}>
-            {isAdding ? (
+          <Button onClick={handleSubmit} disabled={isUpdating || isLoading}>
+            {isUpdating ? (
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                저장 중...
+                수정 중...
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                빠른 저장
-              </div>
+              "수정 완료"
             )}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
-}
+} 

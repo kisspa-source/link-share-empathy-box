@@ -20,16 +20,7 @@ import {
   Edit3,
   Trash2
 } from "lucide-react";
-import { 
-  Dialog,
-  DialogContent, 
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +29,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EditFolderDialog } from "@/components/folder/EditFolderDialog";
-import { getIconByName } from "@/lib/icons";
+import { CreateFolderDialog } from "@/components/folder/CreateFolderDialog";
+import { getSafeIconByName } from "@/lib/icons";
 import type { Folder as FolderType } from "@/types/bookmark";
 
 interface SidebarProps {
@@ -47,10 +39,8 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen }: SidebarProps) {
-  const { folders, addFolder, deleteFolder } = useBookmarks();
+  const { folders, deleteFolder } = useBookmarks();
   const location = useLocation();
-  const [newFolderName, setNewFolderName] = useState("");
-  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [foldersExpanded, setFoldersExpanded] = useState(true);
   const { isCollapsed, toggle } = useSidebarToggle();
   const [editingFolder, setEditingFolder] = useState<FolderType | null>(null);
@@ -80,15 +70,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
     return () => window.removeEventListener('resize', handleResize);
   }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
-  const handleCreateFolder = () => {
-    if (newFolderName.trim()) {
-      addFolder(newFolderName.trim());
-      setNewFolderName("");
-      setIsCreateFolderOpen(false);
-    } else {
-      toast.error("폴더 이름을 입력해주세요");
-    }
-  };
+
 
   const handleEditFolder = (folder: FolderType) => {
     setEditingFolder(folder);
@@ -180,43 +162,20 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                 )}
                 <span>폴더</span>
               </button>
-              <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
-                <DialogTrigger asChild>
+              <CreateFolderDialog
+                trigger={
                   <Button variant="ghost" size="icon" className="h-6 w-6">
                     <Plus className="h-4 w-4" />
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>새 폴더 만들기</DialogTitle>
-                  </DialogHeader>
-                  <div className="py-4">
-                    <Input
-                      placeholder="폴더 이름"
-                      value={newFolderName}
-                      onChange={(e) => setNewFolderName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleCreateFolder();
-                        }
-                      }}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateFolderOpen(false)}>
-                      취소
-                    </Button>
-                    <Button onClick={handleCreateFolder}>생성</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                }
+              />
             </div>
           )}
 
           {(foldersExpanded || isCollapsed) && (
             <div className="mt-1 space-y-1 px-1">
               {folders.map((folder) => {
-                const folderIconInfo = getIconByName(folder.icon_name || 'folder');
+                const folderIconInfo = getSafeIconByName(folder.icon_name || 'folder');
                 const FolderIconComponent = folderIconInfo?.icon || FolderOpen;
                 
                 return (

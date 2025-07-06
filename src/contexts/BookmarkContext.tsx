@@ -18,8 +18,10 @@ interface BookmarkContextType {
   collections: Collection[];
   folders: Folder[];
   tags: Tag[];
+  allTags: string[]; // 모든 북마크에서 사용된 태그들의 유니크한 목록
   isLoading: boolean;
   addBookmark: (url: string, description?: string, folderId?: string, tags?: string[]) => Promise<void>;
+  updateBookmark: (id: string, updates: { title?: string; description?: string; tags?: string[]; folder_id?: string }) => Promise<void>;
   deleteBookmark: (id: string) => Promise<void>;
   addCollection: (name: string, description: string, isPublic: boolean, bookmarkIds: string[]) => Promise<void>;
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
@@ -42,6 +44,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // 중복 실행 방지를 위한 ref들
@@ -204,7 +207,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
                 favicon: faviconUrl, // undefined일 수 있음
                 category: item.category as Category,
                 tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : (Array.isArray(item.tags) ? item.tags : []),
-                memo: item.memo,
+
                 folder_id: item.folder_id,
                 created_at: item.created_at,
                 updated_at: item.updated_at,
@@ -325,6 +328,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unique = Array.from(new Set(bookmarks.flatMap(b => b.tags)))
     setTags(unique.map(t => ({ id: t, name: t })))
+    setAllTags(unique)
   }, [bookmarks])
 
   const addBookmark = async (url: string, description?: string, folderId?: string, tags?: string[]) => {
@@ -439,7 +443,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         image_url: newBookmarkData.image_url || '',
         thumbnail: newBookmarkData.thumbnail,
         favicon: generateSafeFavicon(urlDomain),
-        memo: newBookmarkData.memo,
+
         folder_id: newBookmarkData.folder_id,
         tags: typeof newBookmarkData.tags === 'string' ? JSON.parse(newBookmarkData.tags) : (Array.isArray(newBookmarkData.tags) ? newBookmarkData.tags : []),
         category: category,
@@ -464,6 +468,39 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       toast.error('북마크 저장에 실패했습니다');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const updateBookmark = async (id: string, updates: { title?: string; description?: string; tags?: string[]; folder_id?: string }) => {
+    try {
+      if (!user) {
+        toast.error('북마크를 수정하려면 로그인해야 합니다.');
+        return;
+      }
+
+      console.log('Supabase에서 북마크 수정 시도:', id, updates);
+
+      const { error } = await supabase
+        .from('bookmarks')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('북마크 수정 오류:', error);
+        throw error;
+      }
+
+      console.log('북마크 수정 성공');
+      setBookmarks(prev => prev.map(bookmark => 
+        bookmark.id === id 
+          ? { ...bookmark, ...updates, updated_at: new Date().toISOString() }
+          : bookmark
+      ));
+      toast.success('북마크가 수정되었습니다');
+    } catch (error) {
+      console.error('북마크 수정 오류:', error);
+      toast.error('북마크 수정에 실패했습니다');
     }
   };
 
@@ -692,8 +729,10 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       collections: isLoading ? [] : collections,
       folders: isLoading ? [] : folders,
       tags,
+      allTags,
       isLoading,
       addBookmark,
+      updateBookmark,
       deleteBookmark,
       addCollection,
       updateCollection,

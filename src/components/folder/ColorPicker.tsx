@@ -7,16 +7,19 @@ interface ColorPickerProps {
   selectedColor: string;
   onColorSelect: (color: string) => void;
   className?: string;
+  showTitle?: boolean;
 }
 
-export function ColorPicker({ selectedColor, onColorSelect, className }: ColorPickerProps) {
+export function ColorPicker({ selectedColor, onColorSelect, className, showTitle = true }: ColorPickerProps) {
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
 
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="text-sm font-medium text-foreground">
-        색상 선택
-      </div>
+      {showTitle && (
+        <div className="text-sm font-medium text-foreground">
+          색상 선택
+        </div>
+      )}
       
       <div className="grid grid-cols-10 gap-2">
         {defaultColors.map((color) => (

@@ -186,3 +186,34 @@
   animation: smooth-collapse 0.3s ease-in;
 }
 
+/* 500px 이하에서 더 작은 크기의 요소들 */
+@media (max-width: 500px) {
+  .bookmark-item {
+    @apply gap-1.5 p-1.5;
+  }
+  
+  .bookmark-image {
+    @apply w-8 h-8;
+  }
+  
+  .bookmark-title {
+    @apply text-xs max-w-[280px];
+  }
+  
+  .bookmark-url {
+    @apply text-xs max-w-[70px];
+  }
+  
+  .bookmark-tag {
+    @apply text-xs px-1 py-0.5 max-w-12;
+  }
+  
+  .bookmark-button {
+    @apply h-4 w-4 p-0;
+  }
+  
+  .bookmark-icon {
+    @apply h-2 w-2;
+  }
+}
+
