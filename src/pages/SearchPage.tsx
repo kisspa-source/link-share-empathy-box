@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Bookmark, Category } from "@/types/bookmark";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Settings } from "lucide-react";
+import { BookmarkViewSettingsPanel } from "@/components/bookmark/BookmarkViewSettingsPanel";
+import { BookmarkViewSelector } from "@/components/bookmark/BookmarkViewSelector";
 
 export default function SearchPage() {
   const { bookmarks, tags, isLoading } = useBookmarks();
@@ -21,6 +23,7 @@ export default function SearchPage() {
   const [selectedTag, setSelectedTag] = useState<string>("all");
   const [searchResults, setSearchResults] = useState<Bookmark[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
   
   // Categories for filter
   const categories: Category[] = ["IT", "News", "Shopping", "Community", "Education", "Entertainment", "Finance", "Health", "Travel", "Other"];
@@ -74,12 +77,53 @@ export default function SearchPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">검색</h1>
-          <p className="text-muted-foreground">
-            북마크를 검색하고 필터링하세요
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">검색</h1>
+            <p className="text-muted-foreground">
+              북마크를 검색하고 필터링하세요
+            </p>
+          </div>
+          
+          <div className="flex gap-2">
+            {/* 뷰 모드 선택 (컴팩트) */}
+            <BookmarkViewSelector compact className="hidden md:flex" />
+            
+            {/* 설정 패널 토글 버튼 */}
+            <Button 
+              variant="outline"
+              size="icon"
+              onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
+              className="h-10 w-10"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
+
+        {/* 모바일용 뷰 모드 선택 */}
+        <div className="md:hidden">
+          <BookmarkViewSelector />
+        </div>
+
+        {/* 설정 패널 */}
+        {isSettingsPanelOpen && (
+          <div className="relative">
+            {/* 오버레이 - 클릭 시 패널 닫기 */}
+            <div 
+              className="fixed inset-0 z-40 bg-black/20"
+              onClick={() => setIsSettingsPanelOpen(false)}
+            />
+            
+            <div className="absolute right-0 top-0 w-80 z-50">
+              <BookmarkViewSettingsPanel 
+                onClose={() => setIsSettingsPanelOpen(false)}
+                showCloseButton={true}
+                className="bg-background border rounded-lg shadow-lg"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div className="flex gap-2">

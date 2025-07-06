@@ -25,7 +25,8 @@ interface BookmarkContextType {
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
   deleteCollection: (id: string) => Promise<void>;
   toggleCollectionPublic: (id: string, nextPublic: boolean) => Promise<void>;
-  addFolder: (name: string) => Promise<void>;
+  addFolder: (name: string, iconName?: string, iconColor?: string, iconCategory?: string) => Promise<void>;
+  updateFolder: (id: string, updates: { name?: string; icon_name?: string; icon_color?: string; icon_category?: string }) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
   getBookmarksByFolder: (folderId?: string) => Bookmark[];
   getCollection: (id: string) => Collection | undefined;
@@ -140,6 +141,9 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
             id: f.id,
             name: f.name,
             bookmarkCount: 0, // 북마크 로딩 후 업데이트
+            icon_name: f.icon_name || 'folder',
+            icon_color: f.icon_color || '#3B82F6',
+            icon_category: f.icon_category || 'default'
           }));
           setFolders(formattedFolders);
         } else {
@@ -567,8 +571,8 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addFolder = async (name: string) => {
-    console.log('[addFolder] 폴더 생성 요청:', name);
+  const addFolder = async (name: string, iconName?: string, iconColor?: string, iconCategory?: string) => {
+    console.log('[addFolder] 폴더 생성 요청:', { name, iconName, iconColor, iconCategory });
     if (!user) {
       console.error('[addFolder] 로그인 필요');
       toast.error('로그인이 필요합니다');
@@ -582,20 +586,66 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     }
     try {
       console.log('[addFolder] Supabase에 폴더 생성 요청:', name, user.id);
-      await folderApi.create(name, user.id);
-      console.log('[addFolder] Supabase 폴더 생성 성공, 전체 목록 재조회');
-      const folderData = await folderApi.list(user.id);
-      const formattedFolders: Folder[] = (folderData || []).map(f => ({
-        id: f.id,
-        name: f.name,
-        bookmarkCount: bookmarks.filter(b => b.folder_id === f.id).length
-      }));
-      setFolders(formattedFolders);
-      console.log('[addFolder] setFolders 완료:', formattedFolders);
+      const newFolder = await folderApi.create(name, user.id, undefined, iconName, iconColor, iconCategory);
+      console.log('[addFolder] Supabase 폴더 생성 성공:', newFolder);
+      
+      // 새 폴더를 상태에 즉시 추가
+      const formattedFolder: Folder = {
+        id: newFolder.id,
+        name: newFolder.name,
+        bookmarkCount: 0,
+        icon_name: newFolder.icon_name || 'folder',
+        icon_color: newFolder.icon_color || '#3B82F6',
+        icon_category: newFolder.icon_category || 'default'
+      };
+      
+      setFolders(prev => [...prev, formattedFolder]);
+      console.log('[addFolder] 폴더 상태 업데이트 완료');
       toast.success('폴더가 생성되었습니다');
     } catch (error) {
       console.error('[addFolder] 폴더 생성 에러:', error);
       toast.error('폴더 생성에 실패했습니다');
+    }
+  };
+
+  const updateFolder = async (id: string, updates: { name?: string; icon_name?: string; icon_color?: string; icon_category?: string }) => {
+    console.log('[updateFolder] 폴더 수정 요청:', { id, updates });
+    if (!user) {
+      console.error('[updateFolder] 로그인 필요');
+      toast.error('로그인이 필요합니다');
+      return;
+    }
+    
+    // 중복 폴더명 체크 (이름이 변경되는 경우)
+    if (updates.name && folders.some(f => f.id !== id && f.name === updates.name)) {
+      console.warn('[updateFolder] 중복 폴더명:', updates.name);
+      toast.error('중복된 폴더명이 존재합니다');
+      return;
+    }
+    
+    try {
+      console.log('[updateFolder] Supabase에 폴더 수정 요청:', id, updates);
+      const updatedFolder = await folderApi.update(id, updates);
+      console.log('[updateFolder] Supabase 폴더 수정 성공:', updatedFolder);
+      
+      // 폴더 상태 업데이트
+      setFolders(prev => prev.map(folder => 
+        folder.id === id 
+          ? {
+              ...folder,
+              name: updates.name ?? folder.name,
+              icon_name: updates.icon_name ?? folder.icon_name,
+              icon_color: updates.icon_color ?? folder.icon_color,
+              icon_category: updates.icon_category ?? folder.icon_category
+            }
+          : folder
+      ));
+      
+      console.log('[updateFolder] 폴더 상태 업데이트 완료');
+      toast.success('폴더가 수정되었습니다');
+    } catch (error) {
+      console.error('[updateFolder] 폴더 수정 에러:', error);
+      toast.error('폴더 수정에 실패했습니다');
     }
   };
 
@@ -650,6 +700,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       deleteCollection,
       toggleCollectionPublic,
       addFolder,
+      updateFolder,
       deleteFolder,
       getBookmarksByFolder,
       getCollection,

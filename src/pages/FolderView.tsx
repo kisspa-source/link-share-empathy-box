@@ -6,11 +6,18 @@ import BookmarkGrid from "@/components/bookmark/BookmarkGrid";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import AddBookmarkDialog from "@/components/bookmark/AddBookmarkDialog";
+import { BookmarkViewSettingsPanel } from "@/components/bookmark/BookmarkViewSettingsPanel";
+import { BookmarkViewSelector } from "@/components/bookmark/BookmarkViewSelector";
+import { EditFolderDialog } from "@/components/folder/EditFolderDialog";
+import { Settings, Filter, Edit3 } from "lucide-react";
+import { getIconByName } from "@/lib/icons";
 
 export default function FolderView() {
   const { folderId } = useParams();
   const { folders, getBookmarksByFolder, isLoading } = useBookmarks();
   const [isAddBookmarkOpen, setIsAddBookmarkOpen] = useState(false);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
+  const [isEditFolderOpen, setIsEditFolderOpen] = useState(false);
   
   const folder = folders.find(f => f.id === folderId);
   const bookmarks = getBookmarksByFolder(folderId);
@@ -37,26 +44,89 @@ export default function FolderView() {
     );
   }
 
+  // 폴더 아이콘 정보
+  const folderIconInfo = getIconByName(folder?.icon_name || 'folder');
+  const FolderIconComponent = folderIconInfo?.icon;
+
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {folder ? folder.name : "모든 북마크"}
-            </h1>
+            <div className="flex items-center gap-3">
+              {folder && FolderIconComponent && (
+                <FolderIconComponent 
+                  className="h-7 w-7" 
+                  style={{ color: folder.icon_color || '#3B82F6' }}
+                />
+              )}
+              <h1 className="text-2xl font-bold tracking-tight">
+                {folder ? folder.name : "모든 북마크"}
+              </h1>
+            </div>
             <p className="text-muted-foreground">
               {bookmarks.length}개의 북마크
             </p>
           </div>
           
-          <Button 
-            onClick={() => setIsAddBookmarkOpen(true)}
-            className="w-full md:w-auto"
-          >
-            북마크 추가
-          </Button>
+          <div className="flex gap-2">
+            {/* 뷰 모드 선택 (컴팩트) */}
+            <BookmarkViewSelector compact className="hidden md:flex" />
+            
+            {/* 설정 패널 토글 버튼 */}
+            <Button 
+              variant="outline"
+              size="icon"
+              onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
+              className="h-10 w-10"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            
+            {/* 폴더 편집 버튼 (폴더가 있을 때만 표시) */}
+            {folder && (
+              <Button 
+                variant="outline"
+                size="icon"
+                onClick={() => setIsEditFolderOpen(true)}
+                className="h-10 w-10"
+              >
+                <Edit3 className="h-4 w-4" />
+              </Button>
+            )}
+            
+            <Button 
+              onClick={() => setIsAddBookmarkOpen(true)}
+              className="w-full md:w-auto"
+            >
+              북마크 추가
+            </Button>
+          </div>
         </div>
+
+        {/* 모바일용 뷰 모드 선택 */}
+        <div className="md:hidden">
+          <BookmarkViewSelector />
+        </div>
+
+        {/* 설정 패널 */}
+        {isSettingsPanelOpen && (
+          <div className="relative">
+            {/* 오버레이 - 클릭 시 패널 닫기 */}
+            <div 
+              className="fixed inset-0 z-40 bg-black/20"
+              onClick={() => setIsSettingsPanelOpen(false)}
+            />
+            
+            <div className="absolute right-0 top-0 w-80 z-50">
+              <BookmarkViewSettingsPanel 
+                onClose={() => setIsSettingsPanelOpen(false)}
+                showCloseButton={true}
+                className="bg-background border rounded-lg shadow-lg"
+              />
+            </div>
+          </div>
+        )}
 
         <BookmarkGrid 
           bookmarks={bookmarks} 
@@ -73,6 +143,15 @@ export default function FolderView() {
         open={isAddBookmarkOpen} 
         onOpenChange={setIsAddBookmarkOpen} 
       />
+      
+      {/* 폴더 편집 다이얼로그 */}
+      {folder && (
+        <EditFolderDialog
+          open={isEditFolderOpen}
+          onOpenChange={setIsEditFolderOpen}
+          folder={folder}
+        />
+      )}
     </Layout>
   );
 }

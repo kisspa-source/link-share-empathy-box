@@ -9,15 +9,25 @@ import {
   testSupabaseConnection
 } from '@/lib/test-utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { shouldShowTestPanel, getEnvironmentInfo } from '@/lib/utils/environment';
 
 export function TestPanel() {
   const [isTesting, setIsTesting] = useState(false);
   const { user } = useAuth();
 
+  // 로컬 개발 환경이 아닌 경우 아무것도 렌더링하지 않음
+  if (!shouldShowTestPanel()) {
+    return null;
+  }
+
   const runAllTests = async () => {
     setIsTesting(true);
     try {
       console.log('테스트 시작...');
+      
+      // 환경 정보 로깅
+      const envInfo = getEnvironmentInfo();
+      console.log('환경 정보:', envInfo);
       
       // Supabase 연결 테스트
       console.log('1. Supabase 연결 테스트');

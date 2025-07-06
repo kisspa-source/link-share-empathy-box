@@ -8,11 +8,13 @@ import BookmarkGrid from "@/components/bookmark/BookmarkGrid";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Share2, Globe, Lock } from "lucide-react";
+import { Share2, Globe, Lock, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { collectionApi } from "@/lib/supabase";
 import { generateShareUrl } from "@/lib/utils";
 import type { Collection } from "@/types/bookmark";
+import { BookmarkViewSettingsPanel } from "@/components/bookmark/BookmarkViewSettingsPanel";
+import { BookmarkViewSelector } from "@/components/bookmark/BookmarkViewSelector";
 
 export default function CollectionView() {
   const { collectionId } = useParams();
@@ -20,6 +22,7 @@ export default function CollectionView() {
   const [collection, setCollection] = useState<Collection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
   
   // 컬렉션 데이터 로드
   useEffect(() => {
@@ -178,17 +181,56 @@ export default function CollectionView() {
                   </div>
                 </div>
                 
-                <Button
-                  onClick={handleCopyShareUrl}
-                  disabled={!collection.isPublic}
-                  variant="outline"
-                  className="w-full md:w-auto"
-                >
-                  <Share2 className="mr-2 h-4 w-4" /> 공유
-                </Button>
+                <div className="flex gap-2">
+                  {/* 뷰 모드 선택 (컴팩트) */}
+                  <BookmarkViewSelector compact className="hidden md:flex" />
+                  
+                  {/* 설정 패널 토글 버튼 */}
+                  <Button 
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
+                    className="h-10 w-10"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    onClick={handleCopyShareUrl}
+                    disabled={!collection.isPublic}
+                    variant="outline"
+                    className="w-full md:w-auto"
+                  >
+                    <Share2 className="mr-2 h-4 w-4" /> 공유
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* 모바일용 뷰 모드 선택 */}
+          <div className="md:hidden">
+            <BookmarkViewSelector />
+          </div>
+
+          {/* 설정 패널 */}
+          {isSettingsPanelOpen && (
+            <div className="relative">
+              {/* 오버레이 - 클릭 시 패널 닫기 */}
+              <div 
+                className="fixed inset-0 z-40 bg-black/20"
+                onClick={() => setIsSettingsPanelOpen(false)}
+              />
+              
+              <div className="absolute right-0 top-0 w-80 z-50">
+                <BookmarkViewSettingsPanel 
+                  onClose={() => setIsSettingsPanelOpen(false)}
+                  showCloseButton={true}
+                  className="bg-background border rounded-lg shadow-lg"
+                />
+              </div>
+            </div>
+          )}
 
           <BookmarkGrid 
             bookmarks={collection.bookmarks} 

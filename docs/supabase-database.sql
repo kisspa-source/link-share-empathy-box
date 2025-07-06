@@ -21,8 +21,8 @@ CREATE TABLE public.collection_bookmarks (
   bookmark_id uuid NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT collection_bookmarks_pkey PRIMARY KEY (collection_id, bookmark_id),
-  CONSTRAINT collection_bookmarks_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES public.bookmarks(id),
-  CONSTRAINT collection_bookmarks_collection_id_fkey FOREIGN KEY (collection_id) REFERENCES public.collections(id)
+  CONSTRAINT collection_bookmarks_collection_id_fkey FOREIGN KEY (collection_id) REFERENCES public.collections(id),
+  CONSTRAINT collection_bookmarks_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES public.bookmarks(id)
 );
 CREATE TABLE public.collections (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -33,6 +33,7 @@ CREATE TABLE public.collections (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   is_public boolean NOT NULL DEFAULT false,
+  share_url text,
   CONSTRAINT collections_pkey PRIMARY KEY (id),
   CONSTRAINT collections_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
@@ -53,9 +54,12 @@ CREATE TABLE public.folders (
   parent_folder_id uuid,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  icon_name character varying DEFAULT 'folder'::character varying,
+  icon_color character varying DEFAULT '#3B82F6'::character varying,
+  icon_category character varying DEFAULT 'default'::character varying,
   CONSTRAINT folders_pkey PRIMARY KEY (id),
-  CONSTRAINT folders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
-  CONSTRAINT folders_parent_folder_id_fkey FOREIGN KEY (parent_folder_id) REFERENCES public.folders(id)
+  CONSTRAINT folders_parent_folder_id_fkey FOREIGN KEY (parent_folder_id) REFERENCES public.folders(id),
+  CONSTRAINT folders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.profiles (
   id uuid NOT NULL,
@@ -65,4 +69,14 @@ CREATE TABLE public.profiles (
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_settings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  setting_key character varying NOT NULL,
+  setting_value jsonb NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_settings_pkey PRIMARY KEY (id),
+  CONSTRAINT user_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );

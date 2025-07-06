@@ -389,7 +389,7 @@ export const folderApi = {
       console.log('[folderApi.list] supabase.from 호출 직전');
       const { data, error } = await supabase
         .from('folders')
-        .select('id, name')
+        .select('id, name, icon_name, icon_color, icon_category')
         .eq('user_id', userId)
         .order('name');
       console.log('[folderApi.list] supabase.from 호출 결과:', { data, error });
@@ -404,11 +404,18 @@ export const folderApi = {
     }
   },
 
-  async create(name: string, userId: string, parentId?: string) {
+  async create(name: string, userId: string, parentId?: string, iconName?: string, iconColor?: string, iconCategory?: string) {
     // 인증 토큰 가져오기
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
-    const folder = { name, user_id: userId, parent_folder_id: parentId ?? null };
+    const folder = { 
+      name, 
+      user_id: userId, 
+      parent_folder_id: parentId ?? null,
+      icon_name: iconName ?? 'folder',
+      icon_color: iconColor ?? '#3B82F6',
+      icon_category: iconCategory ?? 'default'
+    };
     // 1. 직접 fetch로 시도
     const directResult = await directFolderInsert(folder, accessToken);
     if (directResult.data) return directResult.data;
@@ -422,7 +429,7 @@ export const folderApi = {
     return data;
   },
 
-  async update(id: string, updates: { name?: string; parent_folder_id?: string | null }) {
+  async update(id: string, updates: { name?: string; parent_folder_id?: string | null; icon_name?: string; icon_color?: string; icon_category?: string }) {
     const { data, error } = await supabase
       .from('folders')
       .update(updates)

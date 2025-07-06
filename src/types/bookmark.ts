@@ -54,4 +54,8 @@ export interface Folder {
   id: string;
   name: string;
   bookmarkCount: number;
+  // 아이콘 관련 필드 추가
+  icon_name?: string;
+  icon_color?: string;
+  icon_category?: string;
 }

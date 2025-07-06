@@ -15,7 +15,10 @@ import {
   ChevronLeft,
   ChevronRightIcon,
   X,
-  Menu
+  Menu,
+  MoreHorizontal,
+  Edit3,
+  Trash2
 } from "lucide-react";
 import { 
   Dialog,
@@ -27,6 +30,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EditFolderDialog } from "@/components/folder/EditFolderDialog";
+import { getIconByName } from "@/lib/icons";
+import type { Folder as FolderType } from "@/types/bookmark";
 
 interface SidebarProps {
   isMobileMenuOpen?: boolean;
@@ -34,12 +47,14 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen }: SidebarProps) {
-  const { folders, addFolder } = useBookmarks();
+  const { folders, addFolder, deleteFolder } = useBookmarks();
   const location = useLocation();
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [foldersExpanded, setFoldersExpanded] = useState(true);
   const { isCollapsed, toggle } = useSidebarToggle();
+  const [editingFolder, setEditingFolder] = useState<FolderType | null>(null);
+  const [isEditFolderOpen, setIsEditFolderOpen] = useState(false);
   
   // Function to determine if a link is active
   const isActive = (path: string) => {
@@ -72,6 +87,17 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
       setIsCreateFolderOpen(false);
     } else {
       toast.error("폴더 이름을 입력해주세요");
+    }
+  };
+
+  const handleEditFolder = (folder: FolderType) => {
+    setEditingFolder(folder);
+    setIsEditFolderOpen(true);
+  };
+
+  const handleDeleteFolder = async (folder: FolderType) => {
+    if (window.confirm(`"${folder.name}" 폴더를 삭제하시겠습니까?\n폴더 내 북마크는 "모든 북마크"로 이동됩니다.`)) {
+      await deleteFolder(folder.id);
     }
   };
 
@@ -189,29 +215,70 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
 
           {(foldersExpanded || isCollapsed) && (
             <div className="mt-1 space-y-1 px-1">
-              {folders.map((folder) => (
-                <Button
-                  key={folder.id}
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start",
-                    isActive(`/folder/${folder.id}`) && "bg-accent text-accent-foreground",
-                    isCollapsed && !isMobile && "justify-center px-2"
-                  )}
-                  asChild
-                  onClick={handleLinkClick}
-                >
-                  <Link to={`/folder/${folder.id}`}>
-                    <FolderOpen className={cn("h-4 w-4", isCollapsed && !isMobile ? "" : "mr-2")} />
+              {folders.map((folder) => {
+                const folderIconInfo = getIconByName(folder.icon_name || 'folder');
+                const FolderIconComponent = folderIconInfo?.icon || FolderOpen;
+                
+                return (
+                  <div key={folder.id} className="group relative">
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start pr-8",
+                        isActive(`/folder/${folder.id}`) && "bg-accent text-accent-foreground",
+                        isCollapsed && !isMobile && "justify-center px-2 pr-2"
+                      )}
+                      asChild
+                      onClick={handleLinkClick}
+                    >
+                      <Link to={`/folder/${folder.id}`}>
+                        <FolderIconComponent 
+                          className={cn("h-4 w-4", isCollapsed && !isMobile ? "" : "mr-2")} 
+                          style={{ color: folder.icon_color || '#3B82F6' }}
+                        />
+                        {(!isCollapsed || isMobile) && (
+                          <>
+                            <span className="flex-1 text-left truncate">{folder.name}</span>
+                            <span className="ml-auto text-xs text-muted-foreground mr-6">{folder.bookmarkCount}</span>
+                          </>
+                        )}
+                      </Link>
+                    </Button>
+                    
+                    {/* 폴더 메뉴 (접혀있지 않거나 모바일일 때만 표시) */}
                     {(!isCollapsed || isMobile) && (
-                      <>
-                        <span className="flex-1 text-left truncate">{folder.name}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{folder.bookmarkCount}</span>
-                      </>
+                      <div className="absolute right-1 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={(e) => e.preventDefault()}
+                            >
+                              <MoreHorizontal className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditFolder(folder)}>
+                              <Edit3 className="mr-2 h-4 w-4" />
+                              편집
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteFolder(folder)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              삭제
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     )}
-                  </Link>
-                </Button>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -280,6 +347,15 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
             {sidebarContent}
           </aside>
         </>
+      )}
+      
+      {/* 폴더 편집 다이얼로그 */}
+      {editingFolder && (
+        <EditFolderDialog
+          open={isEditFolderOpen}
+          onOpenChange={setIsEditFolderOpen}
+          folder={editingFolder}
+        />
       )}
     </>
   );
