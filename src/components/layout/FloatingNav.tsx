@@ -55,72 +55,105 @@ export default function FloatingNav() {
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 100, damping: 20 }}
         className={cn(
-          'fixed top-0 left-0 right-0 z-[9999] transition-all duration-300',
+          'fixed top-0 left-0 right-0 z-[100] transition-all duration-500 supports-[backdrop-filter]:bg-background/80',
           isScrolled
-            ? 'bg-background/80 backdrop-blur-md border-b shadow-sm'
-            : 'bg-transparent'
+            ? 'bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-lg'
+            : 'bg-background/70 backdrop-blur-md border-b border-white/20 shadow-md'
         )}
       >
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-14">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 sm:h-14">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-linkbox-blue to-purple-600 rounded-lg flex items-center justify-center">
-                <Bookmark className="h-5 w-5 text-white" />
-              </div>
-              <span className="font-bold text-lg">
-                {isMobile ? 'L.M' : 'linku.me'}
+            <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group">
+              <motion.div 
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-linkbox-blue to-purple-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300"
+                whileHover={{ scale: isMobile ? 1.05 : 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Bookmark className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              </motion.div>
+              <span className="font-bold text-lg sm:text-xl text-foreground drop-shadow-sm group-hover:text-primary transition-colors duration-300">
+                {isMobile ? 'linku.me' : 'linku.me'}
               </span>
             </Link>
 
             {/* Desktop Navigation */}
-            {!isMobile && (
-              <div className="hidden md:flex items-center space-x-8">
-                {navItems.map((item) => (
-                  <button
-                    key={item.href}
-                    onClick={() => scrollToSection(item.href)}
-                    className="text-sm font-medium hover:text-primary transition-colors"
+            <div className="hidden md:flex items-center space-x-4 lg:space-x-8">
+              {navItems.map((item) => (
+                <motion.button
+                  key={item.href}
+                  onClick={() => scrollToSection(item.href)}
+                  className="text-sm font-medium text-foreground/90 hover:text-primary transition-colors duration-300 drop-shadow-sm whitespace-nowrap"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {item.label}
+                </motion.button>
+              ))}
+              
+              <div className="flex items-center space-x-2 lg:space-x-3">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={toggleTheme}
+                    className="backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 shadow-sm p-2"
                   >
-                    {item.label}
-                  </button>
-                ))}
-                
-                <div className="flex items-center space-x-3">
-                  <Button variant="ghost" size="sm" onClick={toggleTheme}>
                     {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                   </Button>
-                  <Button variant="ghost" size="sm" asChild>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    asChild
+                    className="backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 shadow-sm hidden lg:flex"
+                  >
                     <Link to="/login">
                       <LogIn className="h-4 w-4 mr-1" />
                       로그인
                     </Link>
                   </Button>
-                  <Button size="sm" asChild>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    size="sm" 
+                    asChild
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
                     <Link to="/signup">
-                      <UserPlus className="h-4 w-4 mr-1" />
-                      회원가입
+                      <UserPlus className="h-4 w-4 mr-1 lg:mr-1" />
+                      <span className="hidden lg:inline">회원가입</span>
+                      <span className="lg:hidden">가입</span>
                     </Link>
                   </Button>
-                </div>
+                </motion.div>
               </div>
-            )}
+            </div>
 
             {/* Mobile Hamburger */}
-            {isMobile && (
+            <motion.div
+              whileTap={{ scale: 0.95 }}
+              className="md:hidden"
+            >
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden"
+                className="backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 shadow-sm h-10 w-10 md:hidden"
               >
-                {isMobileMenuOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
+                <motion.div
+                  animate={{ rotate: isMobileMenuOpen ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {isMobileMenuOpen ? (
+                    <X className="h-6 w-6" />
+                  ) : (
+                    <Menu className="h-6 w-6" />
+                  )}
+                </motion.div>
               </Button>
-            )}
+            </motion.div>
           </div>
         </div>
       </motion.nav>
@@ -132,38 +165,84 @@ export default function FloatingNav() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="fixed top-14 left-0 right-0 z-[9998] bg-background/95 backdrop-blur-md border-b shadow-lg md:hidden"
+            transition={{ duration: 0.3 }}
+            className="fixed top-16 sm:top-14 left-0 right-0 z-[99] bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-xl md:hidden supports-[backdrop-filter]:bg-background/90"
           >
-            <div className="container mx-auto px-4 py-4 space-y-4">
-              {navItems.map((item) => (
-                <button
+            <div className="container mx-auto px-4 sm:px-6 py-8 space-y-6">
+              {navItems.map((item, index) => (
+                <motion.button
                   key={item.href}
                   onClick={() => scrollToSection(item.href)}
-                  className="flex items-center space-x-3 w-full p-3 text-left hover:bg-accent rounded-lg transition-colors"
+                  className="flex items-center space-x-5 w-full p-6 text-left hover:bg-accent/50 rounded-xl transition-all duration-300 min-h-[70px] active:bg-accent/70"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <item.icon className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">{item.label}</span>
-                </button>
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
+                    <item.icon className="h-7 w-7 text-primary" />
+                  </div>
+                  <span className="font-medium text-xl">{item.label}</span>
+                </motion.button>
               ))}
               
-              <div className="border-t pt-4 space-y-3">
-                <Button variant="ghost" className="w-full justify-start" onClick={toggleTheme}>
-                  {theme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-                  {theme === 'dark' ? '라이트 모드' : '다크 모드'}
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                    <LogIn className="h-4 w-4 mr-2" />
-                    로그인
-                  </Link>
-                </Button>
-                <Button className="w-full justify-start" asChild>
-                  <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    회원가입
-                  </Link>
-                </Button>
+              <div className="border-t border-border/50 pt-8 space-y-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 h-16 text-xl" 
+                    onClick={toggleTheme}
+                  >
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 mr-4">
+                      {theme === 'dark' ? <Sun className="h-7 w-7 text-primary" /> : <Moon className="h-7 w-7 text-primary" />}
+                    </div>
+                    {theme === 'dark' ? '라이트 모드' : '다크 모드'}
+                  </Button>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 h-16 text-xl" 
+                    asChild
+                  >
+                    <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                      <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 mr-4">
+                        <LogIn className="h-7 w-7 text-primary" />
+                      </div>
+                      로그인
+                    </Link>
+                  </Button>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button 
+                    className="w-full justify-start bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-16 text-xl font-semibold" 
+                    asChild
+                  >
+                    <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                      <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-white/20 mr-4">
+                        <UserPlus className="h-7 w-7 text-white" />
+                      </div>
+                      회원가입
+                    </Link>
+                  </Button>
+                </motion.div>
               </div>
             </div>
           </motion.div>
@@ -172,12 +251,13 @@ export default function FloatingNav() {
 
       {/* Mobile Menu Backdrop */}
       <AnimatePresence>
-        {isMobileMenuOpen && isMobile && (
+        {isMobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9997] bg-black/20 backdrop-blur-sm md:hidden"
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[98] bg-black/50 backdrop-blur-sm md:hidden supports-[backdrop-filter]:bg-black/30"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}

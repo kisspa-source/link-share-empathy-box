@@ -10,6 +10,7 @@ import {
 } from '@/lib/test-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { shouldShowTestPanel, getEnvironmentInfo } from '@/lib/utils/environment';
+import { FlaskConical } from 'lucide-react';
 
 export function TestPanel() {
   const [isTesting, setIsTesting] = useState(false);
@@ -65,12 +66,32 @@ export function TestPanel() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
+      {/* 모바일용 작은 아이콘 버튼 */}
       <Button
         onClick={runAllTests}
         disabled={isTesting}
-        className="bg-red-500 hover:bg-red-600"
+        size="icon"
+        className="bg-red-500 hover:bg-red-600 text-white shadow-lg
+                   w-8 h-8 rounded-full
+                   sm:hidden
+                   border border-red-600/50"
+        title={isTesting ? '테스트 중...' : '테스트 실행'}
       >
-        {isTesting ? '테스트 중...' : '모든 테스트 실행'}
+        <FlaskConical className="h-4 w-4" />
+      </Button>
+      
+      {/* 데스크톱용 텍스트 버튼 */}
+      <Button
+        onClick={runAllTests}
+        disabled={isTesting}
+        size="sm"
+        className="bg-red-500 hover:bg-red-600 text-white shadow-lg
+                   text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2
+                   min-w-[80px] sm:min-w-[120px] h-8 sm:h-9
+                   hidden sm:flex
+                   border border-red-600/50"
+      >
+        {isTesting ? '테스트 중...' : '테스트 실행'}
       </Button>
     </div>
   );
