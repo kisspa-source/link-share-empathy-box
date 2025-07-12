@@ -449,3 +449,122 @@ export async function testSupabaseConnection(): Promise<boolean> {
     return false;
   }
 }
+
+// =========================
+// 북마크 삭제 테스트
+// - 북마크를 생성한 후 삭제 과정을 테스트
+// - 외래키 제약조건 및 RLS 정책 확인
+// =========================
+export async function testBookmarkDeletion(): Promise<boolean> {
+  console.log('[testBookmarkDeletion] 북마크 삭제 테스트 시작');
+  try {
+    // 1) 현재 세션 확인
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+    if (!session || !session.user) {
+      throw new Error('인증된 사용자가 아닙니다');
+    }
+    console.log('[testBookmarkDeletion] 인증 상태 확인 완료, 사용자 ID:', session.user.id);
+
+    // 2) 테스트용 북마크 생성
+    const testBookmark = {
+      user_id: session.user.id,
+      url: 'https://example-delete-test.com',
+      title: '삭제 테스트 북마크',
+      description: '삭제 테스트용 북마크입니다.',
+      tags: ['delete-test'],
+    };
+    console.log('[testBookmarkDeletion] 테스트 북마크 생성 중...');
+
+    const { data: createdBookmark, error: createError } = await supabase
+      .from('bookmarks')
+      .insert(testBookmark)
+      .select()
+      .single();
+
+    if (createError || !createdBookmark) {
+      console.error('[testBookmarkDeletion] 테스트 북마크 생성 실패:', createError);
+      throw new Error('테스트 북마크 생성에 실패했습니다.');
+    }
+    
+    console.log('[testBookmarkDeletion] 테스트 북마크 생성 성공:', createdBookmark.id);
+
+    // 3) 컬렉션-북마크 관계 확인
+    console.log('[testBookmarkDeletion] 컬렉션-북마크 관계 확인...');
+    const { data: collectionBookmarks, error: cbError } = await supabase
+      .from('collection_bookmarks')
+      .select('collection_id')
+      .eq('bookmark_id', createdBookmark.id);
+
+    if (cbError) {
+      console.warn('[testBookmarkDeletion] 컬렉션 관계 조회 실패:', cbError);
+    } else {
+      console.log('[testBookmarkDeletion] 컬렉션 관계:', collectionBookmarks?.length || 0, '개');
+    }
+
+    // 4) 삭제 테스트 (Supabase 클라이언트)
+    console.log('[testBookmarkDeletion] Supabase 클라이언트로 삭제 시도...');
+    const { error: deleteError, count } = await supabase
+      .from('bookmarks')
+      .delete({ count: 'exact' })
+      .eq('id', createdBookmark.id)
+      .eq('user_id', session.user.id);
+
+    if (deleteError) {
+      console.warn('[testBookmarkDeletion] Supabase 클라이언트 삭제 실패:', deleteError);
+      
+      // 5) 직접 API 삭제 테스트
+      console.log('[testBookmarkDeletion] 직접 API로 삭제 시도...');
+      const { directBookmarkDelete } = await import('./supabase');
+      const directResult = await directBookmarkDelete(createdBookmark.id, session.access_token);
+      
+      if (directResult.error) {
+        console.error('[testBookmarkDeletion] 직접 API 삭제도 실패:', directResult.error);
+        
+        // 삭제 실패한 북마크 정리 시도
+        console.log('[testBookmarkDeletion] 수동으로 테스트 북마크 정리 시도...');
+        await supabase
+          .from('bookmarks')
+          .delete()
+          .eq('id', createdBookmark.id);
+          
+        throw new Error(`삭제 테스트 실패: ${directResult.error.userMessage || directResult.error.message}`);
+      } else {
+        console.log('[testBookmarkDeletion] 직접 API 삭제 성공');
+      }
+    } else {
+      console.log('[testBookmarkDeletion] Supabase 클라이언트 삭제 성공, 삭제된 레코드 수:', count);
+      
+      if (count === 0) {
+        console.warn('[testBookmarkDeletion] 삭제 요청은 성공했지만 삭제된 레코드가 없음');
+        throw new Error('RLS 정책 또는 권한 문제로 삭제되지 않았습니다.');
+      }
+    }
+
+    // 6) 삭제 확인
+    console.log('[testBookmarkDeletion] 삭제 확인...');
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('bookmarks')
+      .select('id')
+      .eq('id', createdBookmark.id)
+      .maybeSingle();
+
+    if (verifyError) {
+      console.warn('[testBookmarkDeletion] 삭제 확인 중 오류:', verifyError);
+    } else if (verifyData) {
+      console.error('[testBookmarkDeletion] 북마크가 여전히 존재함');
+      throw new Error('삭제 요청은 성공했지만 북마크가 여전히 존재합니다.');
+    } else {
+      console.log('[testBookmarkDeletion] 삭제 확인 완료 - 북마크가 존재하지 않음');
+    }
+
+    console.log('[testBookmarkDeletion] 북마크 삭제 테스트 성공');
+    toast.success('북마크 삭제 테스트 성공!');
+    return true;
+    
+  } catch (error: any) {
+    console.error('[testBookmarkDeletion] 테스트 실패:', error.message || error);
+    toast.error(`북마크 삭제 테스트 실패: ${error.message || '알 수 없는 오류'}`);
+    return false;
+  }
+}

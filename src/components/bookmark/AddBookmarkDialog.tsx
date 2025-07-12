@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBookmarks } from "@/contexts/BookmarkContext";
 import {
   Dialog,
@@ -16,21 +16,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Link } from "lucide-react";
+import { Link, Folder, ChevronRight } from "lucide-react";
 import TagAutocomplete from "./TagAutocomplete";
+import { getSafeIconByName } from "@/lib/icons";
 
 interface AddBookmarkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultFolderId?: string; // 기본 폴더 ID 추가
 }
 
-export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps) {
-  const { folders, addBookmark, isLoading, allTags } = useBookmarks();
+export default function AddBookmarkDialog({ open, onOpenChange, defaultFolderId }: AddBookmarkDialogProps) {
+  const { folders, addBookmark, isLoading, allTags, getFlatFolderList } = useBookmarks();
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
-  const [folderId, setFolderId] = useState<string>("__no_folder__");
+  const [folderId, setFolderId] = useState<string>(defaultFolderId || "__no_folder__");
   const [isAdding, setIsAdding] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
+
+  // defaultFolderId가 변경될 때 folderId 업데이트
+  useEffect(() => {
+    if (defaultFolderId) {
+      setFolderId(defaultFolderId);
+    }
+  }, [defaultFolderId]);
 
   const handleSubmit = async () => {
     if (!url.trim()) return;
@@ -66,6 +75,7 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
           </div>
           
           <div>
+            <label className="text-sm font-medium mb-2 block">폴더 선택</label>
             <Select
               value={folderId}
               onValueChange={(value) => setFolderId(value)}
@@ -75,10 +85,35 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
                 <SelectValue placeholder="폴더 선택 (선택사항)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__no_folder__">폴더 없음</SelectItem>
-                {folders.map((folder) => (
+                <SelectItem value="__no_folder__">
+                  <div className="flex items-center">
+                    <Folder className="h-4 w-4 mr-2 text-muted-foreground" />
+                    폴더 없음
+                  </div>
+                </SelectItem>
+                {getFlatFolderList().map((folder) => (
                   <SelectItem key={folder.id} value={folder.id}>
-                    {folder.name}
+                    <div className="flex items-center">
+                      <div style={{ marginLeft: `${(folder.depth || 0) * 16}px` }}>
+                        {folder.depth && folder.depth > 0 && (
+                          <ChevronRight className="h-3 w-3 text-muted-foreground inline mr-1" />
+                        )}
+                        {(() => {
+                          const folderIconInfo = getSafeIconByName(folder.icon_name || 'folder');
+                          const FolderIconComponent = folderIconInfo?.icon || Folder;
+                          return (
+                            <FolderIconComponent 
+                              className="h-4 w-4 mr-2 inline" 
+                              style={{ color: folder.icon_color || '#3B82F6' }}
+                            />
+                          );
+                        })()}
+                        <span>{folder.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({folder.bookmarkCount}개)
+                        </span>
+                      </div>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -95,17 +130,7 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
             />
           </div>
           
-          <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span className="font-medium">빠른 저장</span>
-            </div>
-            <p className="mt-1 text-xs">
-              북마크가 즉시 저장됩니다. 메타데이터는 백그라운드에서 자동으로 업데이트됩니다.
-            </p>
-          </div>
+
           
           <div>
             <TagAutocomplete 
@@ -131,12 +156,7 @@ export default function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDia
                 저장 중...
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                빠른 저장
-              </div>
+              "저장"
             )}
           </Button>
         </div>

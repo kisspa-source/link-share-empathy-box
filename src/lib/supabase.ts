@@ -172,33 +172,96 @@ export const bookmarkApi = {
 
 // 북마크 직접 삭제 (Supabase 클라이언트 우회)
 export const directBookmarkDelete = async (id: string, accessToken?: string) => {
+  console.log('🔧 [directBookmarkDelete] 직접 API 호출로 북마크 삭제 시작:', id);
+  
   try {
     const headers: HeadersInit = {
-      'apikey': supabaseAnonKey
+      'apikey': supabaseAnonKey,
+      'Content-Type': 'application/json'
     };
 
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
+      console.log('🔑 [directBookmarkDelete] 인증 토큰 사용');
+    } else {
+      console.warn('⚠️ [directBookmarkDelete] 인증 토큰이 없어 익명 키만 사용');
     }
 
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/bookmarks?id=eq.${id}`,
-      {
-        method: 'DELETE',
-        headers
-      }
-    );
+    const url = `${supabaseUrl}/rest/v1/bookmarks?id=eq.${id}`;
+    console.log('🌐 [directBookmarkDelete] 요청 URL:', url);
+    console.log('📋 [directBookmarkDelete] 요청 헤더:', {
+      'apikey': supabaseAnonKey.substring(0, 20) + '...',
+      'Authorization': accessToken ? 'Bearer ' + accessToken.substring(0, 20) + '...' : 'None',
+      'Content-Type': 'application/json'
+    });
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers
+    });
+
+    console.log('📊 [directBookmarkDelete] 응답 상태:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('직접 북마크 삭제 실패:', error);
-      return { error };
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('❌ [directBookmarkDelete] 응답 에러 데이터:', errorData);
+      } catch (parseError) {
+        console.error('❌ [directBookmarkDelete] 에러 응답 파싱 실패:', parseError);
+        errorData = { 
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          code: response.status.toString()
+        };
+      }
+
+      // 구체적인 에러 분류
+      if (response.status === 401) {
+        errorData.userMessage = '인증이 필요합니다. 다시 로그인해 주세요.';
+      } else if (response.status === 403) {
+        errorData.userMessage = '삭제 권한이 없습니다.';
+      } else if (response.status === 404) {
+        errorData.userMessage = '삭제할 북마크를 찾을 수 없습니다.';
+      } else if (response.status === 409) {
+        errorData.userMessage = '다른 데이터와 연결되어 있어 삭제할 수 없습니다.';
+      } else {
+        errorData.userMessage = `서버 오류가 발생했습니다. (${response.status})`;
+      }
+
+      return { error: errorData };
     }
 
-    return { error: null };
+    // 성공적인 응답 처리
+    let responseData = null;
+    try {
+      const text = await response.text();
+      if (text) {
+        responseData = JSON.parse(text);
+        console.log('📄 [directBookmarkDelete] 응답 데이터:', responseData);
+      } else {
+        console.log('✅ [directBookmarkDelete] 빈 응답 (정상 삭제)');
+      }
+    } catch (parseError) {
+      console.warn('⚠️ [directBookmarkDelete] 응답 파싱 실패 (정상일 수 있음):', parseError);
+    }
+
+    console.log('🎉 [directBookmarkDelete] 삭제 성공');
+    return { error: null, data: responseData };
+    
   } catch (error) {
-    console.error('직접 북마크 삭제 오류:', error);
-    return { error };
+    console.error('💥 [directBookmarkDelete] 네트워크 오류:', error);
+    
+    const errorResponse = {
+      message: error instanceof Error ? error.message : '네트워크 오류가 발생했습니다.',
+      userMessage: '네트워크 연결을 확인하고 다시 시도해 주세요.',
+      originalError: error
+    };
+    
+    return { error: errorResponse };
   }
 };
 
@@ -386,21 +449,61 @@ export const folderApi = {
   async list(userId: string) {
     console.log('[folderApi.list] 요청 시작:', { userId });
     try {
-      console.log('[folderApi.list] supabase.from 호출 직전');
+      console.log('[folderApi.list] 북마크 개수와 함께 폴더 조회');
+      
+      // 폴더 기본 정보와 북마크 개수를 함께 조회
       const { data, error } = await supabase
         .from('folders')
-        .select('id, name, icon_name, icon_color, icon_category, parent_id, user_id, created_at, updated_at')
+        .select(`
+          id, 
+          name, 
+          icon_name, 
+          icon_color, 
+          icon_category, 
+          parent_id, 
+          user_id, 
+          created_at, 
+          updated_at,
+          bookmarks:bookmarks!folder_id(count)
+        `)
         .eq('user_id', userId)
         .order('name');
+
       console.log('[folderApi.list] supabase.from 호출 결과:', { data, error });
+      
       if (error) {
         console.error('[folderApi.list] Supabase 쿼리 에러:', error);
         throw error;
       }
-      return data;
+
+      // 데이터 변환: bookmarks.count를 bookmarkCount로 변환
+      const foldersWithCount = data?.map(folder => ({
+        ...folder,
+        bookmarkCount: folder.bookmarks?.[0]?.count || 0
+      })) || [];
+
+      console.log('[folderApi.list] 변환된 데이터:', foldersWithCount);
+      return foldersWithCount;
+      
     } catch (e) {
       console.error('[folderApi.list] 함수 에러:', e);
-      throw e;
+      // 에러 발생 시 기존 방식으로 폴백
+      console.log('[folderApi.list] 폴백: 기존 방식으로 폴더만 조회');
+      try {
+        const { data, error } = await supabase
+          .from('folders')
+          .select('id, name, icon_name, icon_color, icon_category, parent_id, user_id, created_at, updated_at')
+          .eq('user_id', userId)
+          .order('name');
+        
+        if (error) throw error;
+        
+        // bookmarkCount는 0으로 초기화 (프론트엔드에서 계산)
+        return data?.map(folder => ({ ...folder, bookmarkCount: 0 })) || [];
+      } catch (fallbackError) {
+        console.error('[folderApi.list] 폴백도 실패:', fallbackError);
+        throw fallbackError;
+      }
     }
   },
 

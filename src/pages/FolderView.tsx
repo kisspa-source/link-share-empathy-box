@@ -141,7 +141,8 @@ export default function FolderView() {
       
       <AddBookmarkDialog 
         open={isAddBookmarkOpen} 
-        onOpenChange={setIsAddBookmarkOpen} 
+        onOpenChange={setIsAddBookmarkOpen}
+        defaultFolderId={folderId} 
       />
       
       {/* 폴더 편집 다이얼로그 */}

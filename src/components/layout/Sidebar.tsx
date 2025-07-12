@@ -33,6 +33,79 @@ import { CreateFolderDialog } from "@/components/folder/CreateFolderDialog";
 import { getSafeIconByName } from "@/lib/icons";
 import type { Folder as FolderType } from "@/types/bookmark";
 
+// 북마크 개수 표시 컴포넌트 (마우스 오버 시 "..." 버튼으로 변경)
+const BookmarkCountDisplay = memo(function BookmarkCountDisplay({ 
+  count, 
+  folder, 
+  onEdit, 
+  onDelete 
+}: { 
+  count: number;
+  folder: FolderType;
+  onEdit: (folder: FolderType) => void;
+  onDelete: (folder: FolderType) => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // 드롭다운이 열려있을 때는 마우스 아웃되어도 버튼 상태 유지
+  const showButton = isHovered || isDropdownOpen;
+
+  return (
+    <div 
+      className="relative min-w-[24px] flex items-center justify-center"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {!showButton ? (
+        // 마우스 아웃: 북마크 개수 표시
+        <span 
+          className="text-xs text-muted-foreground transition-opacity duration-200"
+          title={`${count}개의 북마크`}
+        >
+          {count}
+        </span>
+      ) : (
+        // 마우스 오버 또는 드롭다운 열림: "..." 버튼 표시
+        <DropdownMenu onOpenChange={setIsDropdownOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200 rounded-sm"
+              title="폴더 메뉴"
+            >
+              <MoreHorizontal className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="z-50">
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(folder);
+              }}
+            >
+              <Edit3 className="h-4 w-4 mr-2" />
+              폴더 수정
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(folder);
+              }}
+              className="text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              폴더 삭제
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+});
+
 interface SidebarProps {
   isMobileMenuOpen?: boolean;
   setIsMobileMenuOpen?: (open: boolean) => void;
@@ -79,7 +152,11 @@ const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMen
   }, []);
 
   const handleDeleteFolder = useCallback(async (folder: FolderType) => {
-    if (window.confirm(`"${folder.name}" 폴더를 삭제하시겠습니까?\n폴더 내 북마크는 "모든 북마크"로 이동됩니다.`)) {
+    const confirmMessage = folder.bookmarkCount > 0 
+      ? `"${folder.name}" 폴더를 삭제하시겠습니까?\n\n폴더 내 ${folder.bookmarkCount}개의 북마크는 "모든 북마크"로 이동됩니다.\n하위 폴더가 있다면 최상위 폴더로 이동됩니다.`
+      : `"${folder.name}" 폴더를 삭제하시겠습니까?\n\n하위 폴더가 있다면 최상위 폴더로 이동됩니다.`;
+      
+    if (window.confirm(confirmMessage)) {
       await deleteFolder(folder.id);
     }
   }, [deleteFolder]);
@@ -136,7 +213,7 @@ const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMen
               <Button
                 variant="ghost"
                 className={cn(
-                  "flex-1 justify-start pr-8 relative",
+                  "flex-1 justify-start pr-2 relative",
                   isActive(`/folder/${folder.id}`) && "bg-accent text-accent-foreground",
                   isCollapsed && !isMobile && "justify-center px-2 pr-2",
                   indentClass
@@ -161,42 +238,17 @@ const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMen
                   {(!isCollapsed || isMobile) && (
                     <>
                       <span className="flex-1 text-left truncate">{folder.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {folder.bookmarkCount}
-                      </span>
+                      <BookmarkCountDisplay 
+                        count={folder.bookmarkCount} 
+                        folder={folder}
+                        onEdit={handleEditFolder}
+                        onDelete={handleDeleteFolder}
+                      />
                     </>
                   )}
                 </Link>
               </Button>
-              
-              {/* 더보기 메뉴 */}
-              {(!isCollapsed || isMobile) && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEditFolder(folder)}>
-                      <Edit3 className="h-4 w-4 mr-2" />
-                      수정
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => handleDeleteFolder(folder)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      삭제
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+
             </div>
           </div>
           

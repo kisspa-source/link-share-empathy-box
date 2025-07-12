@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
   testSignup,
   testBookmarkCreation,
+  testBookmarkDeletion,
   testCollectionCreation,
   testSecurity,
   testRealtimeUpdates,
@@ -43,17 +44,21 @@ export function TestPanel() {
         console.log('3. 북마크 생성 테스트');
         await testBookmarkCreation(user.id);
         
+        // 북마크 삭제 테스트
+        console.log('4. 북마크 삭제 테스트');
+        await testBookmarkDeletion();
+        
         // 컬렉션 생성 테스트
-        console.log('4. 컬렉션 생성 테스트');
+        console.log('5. 컬렉션 생성 테스트');
         await testCollectionCreation(user.id);
         
         // 실시간 업데이트 테스트
-        console.log('5. 실시간 업데이트 테스트');
+        console.log('6. 실시간 업데이트 테스트');
         await testRealtimeUpdates(user.id);
       }
       
       // 보안 테스트 (마지막으로 이동)
-      console.log('6. 보안 테스트');
+      console.log('7. 보안 테스트');
       await testSecurity();
       
       console.log('모든 테스트 완료');

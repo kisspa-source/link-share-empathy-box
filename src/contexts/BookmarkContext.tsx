@@ -13,6 +13,19 @@ import {
 
 import { generateShareUrl } from '../lib/utils';
 
+// 폴더 트리에서 특정 폴더의 북마크 개수를 업데이트하는 헬퍼 함수
+const updateFolderCountInTree = (folders: Folder[], folderId: string, delta: number): Folder[] => {
+  return folders.map(folder => {
+    if (folder.id === folderId) {
+      return { ...folder, bookmarkCount: Math.max(0, folder.bookmarkCount + delta) };
+    }
+    if (folder.children && folder.children.length > 0) {
+      return { ...folder, children: updateFolderCountInTree(folder.children, folderId, delta) };
+    }
+    return folder;
+  });
+};
+
 interface BookmarkContextType {
   bookmarks: Bookmark[];
   collections: Collection[];
@@ -205,7 +218,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
           const formattedFolders: Folder[] = (foldersResult.value || []).map(f => ({
             id: f.id,
             name: f.name,
-            bookmarkCount: 0, // 북마크 로딩 후 업데이트
+            bookmarkCount: f.bookmarkCount || 0, // API에서 받아온 개수 사용
             icon_name: f.icon_name || 'folder',
             icon_color: f.icon_color || '#3B82F6',
             icon_category: f.icon_category || 'default',
@@ -216,6 +229,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
           }));
           setFolders(formattedFolders);
           setFoldersTree(buildFoldersTree(formattedFolders));
+          console.log('[BookmarkProvider] 폴더별 북마크 개수:', formattedFolders.map(f => ({ name: f.name, count: f.bookmarkCount })));
         } else {
           console.error('폴더 로딩 실패:', foldersResult.reason);
           toast.error('폴더를 불러오는 중 오류가 발생했습니다.');
@@ -334,17 +348,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     loadAllData();
   }, [user?.id, refreshKey]); // 의존성을 user?.id로 단순화
 
-  // 북마크 변경 시 폴더 개수 업데이트 - 최적화된 useEffect
-  useEffect(() => {
-    if (folders.length > 0) {
-      setFolders(prev =>
-        prev.map(f => ({
-          ...f,
-          bookmarkCount: bookmarks.filter(b => b.folder_id === f.id).length,
-        }))
-      );
-    }
-  }, [bookmarks.length]); // bookmarks 배열 전체가 아닌 length만 의존성으로 사용
+  // 북마크 변경 시 폴더 개수 업데이트는 이제 실시간으로 처리됩니다. // bookmarks 배열 전체가 아닌 length만 의존성으로 사용
 
   // 메타데이터 가져오기 (Edge Functions 사용)
   const fetchMetadata = async (url: string) => {
@@ -521,6 +525,18 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
 
       // 상태 업데이트
       setBookmarks(prev => [newBookmark, ...prev]);
+      
+      // 폴더 개수 실시간 업데이트
+      if (folderId) {
+        setFolders(prev => prev.map(folder => 
+          folder.id === folderId 
+            ? { ...folder, bookmarkCount: folder.bookmarkCount + 1 }
+            : folder
+        ));
+        setFoldersTree(prev => updateFolderCountInTree(prev, folderId, 1));
+        console.log('📊 [addBookmark] 폴더 개수 업데이트 완료:', folderId);
+      }
+      
       toast.success('북마크가 빠르게 저장되었습니다! 🚀');
       
       // Edge Functions으로 메타데이터 개선 (백그라운드에서 실행)
@@ -545,7 +561,13 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      console.log('Supabase에서 북마크 수정 시도:', id, updates);
+      console.log('🔄 [updateBookmark] 북마크 수정 시도:', id, updates);
+
+      // 폴더 이동이 있는지 확인 (개수 업데이트를 위해)
+      const currentBookmark = bookmarks.find(b => b.id === id);
+      const isMovingFolder = updates.folder_id !== undefined && currentBookmark?.folder_id !== updates.folder_id;
+      const oldFolderId = currentBookmark?.folder_id;
+      const newFolderId = updates.folder_id;
 
       const { error } = await supabase
         .from('bookmarks')
@@ -554,19 +576,51 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('북마크 수정 오류:', error);
+        console.error('❌ [updateBookmark] 북마크 수정 오류:', error);
         throw error;
       }
 
-      console.log('북마크 수정 성공');
+      console.log('✅ [updateBookmark] 북마크 수정 성공');
+      
+      // 북마크 상태 업데이트
       setBookmarks(prev => prev.map(bookmark => 
         bookmark.id === id 
           ? { ...bookmark, ...updates, updated_at: new Date().toISOString() }
           : bookmark
       ));
+
+      // 폴더 이동 시 개수 업데이트
+      if (isMovingFolder) {
+        console.log('📊 [updateBookmark] 폴더 이동 감지:', { from: oldFolderId, to: newFolderId });
+        
+        setFolders(prev => prev.map(folder => {
+          if (folder.id === oldFolderId) {
+            // 이전 폴더 개수 -1
+            return { ...folder, bookmarkCount: Math.max(0, folder.bookmarkCount - 1) };
+          }
+          if (folder.id === newFolderId) {
+            // 새 폴더 개수 +1
+            return { ...folder, bookmarkCount: folder.bookmarkCount + 1 };
+          }
+          return folder;
+        }));
+
+        // 폴더 트리도 업데이트
+        let updatedTree = foldersTree;
+        if (oldFolderId) {
+          updatedTree = updateFolderCountInTree(updatedTree, oldFolderId, -1);
+        }
+        if (newFolderId) {
+          updatedTree = updateFolderCountInTree(updatedTree, newFolderId, 1);
+        }
+        setFoldersTree(updatedTree);
+        
+        console.log('📊 [updateBookmark] 폴더 개수 업데이트 완료');
+      }
+
       toast.success('북마크가 수정되었습니다');
     } catch (error) {
-      console.error('북마크 수정 오류:', error);
+      console.error('💥 [updateBookmark] 북마크 수정 오류:', error);
       toast.error('북마크 수정에 실패했습니다');
     }
   };
@@ -578,32 +632,132 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      console.log('Supabase에서 북마크 삭제 시도:', id);
+      console.log('🗑️ [deleteBookmark] 북마크 삭제 시작:', id);
+      console.log('🗑️ [deleteBookmark] 사용자 ID:', user.id);
 
-      const { error } = await supabase
+      // 1. 먼저 외래키 제약조건 확인 - collection_bookmarks에서 해당 북마크 제거
+      console.log('🔗 [deleteBookmark] 컬렉션-북마크 관계 확인 중...');
+      try {
+        const { data: collectionBookmarks, error: cbError } = await supabase
+          .from('collection_bookmarks')
+          .select('collection_id')
+          .eq('bookmark_id', id);
+
+        if (cbError) {
+          console.warn('⚠️ [deleteBookmark] 컬렉션-북마크 관계 조회 실패:', cbError);
+        } else if (collectionBookmarks && collectionBookmarks.length > 0) {
+          console.log('📚 [deleteBookmark] 컬렉션에 포함된 북마크 발견:', collectionBookmarks.length, '개');
+          
+          // 컬렉션에서 북마크 제거
+          const { error: removeError } = await supabase
+            .from('collection_bookmarks')
+            .delete()
+            .eq('bookmark_id', id);
+
+          if (removeError) {
+            console.error('❌ [deleteBookmark] 컬렉션에서 북마크 제거 실패:', removeError);
+            throw new Error(`컬렉션에서 북마크 제거 실패: ${removeError.message}`);
+          }
+          console.log('✅ [deleteBookmark] 컬렉션에서 북마크 제거 완료');
+        } else {
+          console.log('📚 [deleteBookmark] 컬렉션에 포함되지 않은 북마크');
+        }
+      } catch (cbError) {
+        console.error('❌ [deleteBookmark] 컬렉션-북마크 관계 처리 중 오류:', cbError);
+        // 컬렉션 관계 처리 실패 시에도 북마크 삭제는 계속 시도
+      }
+
+      // 2. 북마크 삭제 시도 (상세한 에러 정보 포함)
+      console.log('🗑️ [deleteBookmark] Supabase 클라이언트로 북마크 삭제 시도...');
+      
+      const { error, count } = await supabase
         .from('bookmarks')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', id)
         .eq('user_id', user.id);
 
       if (error) {
-        console.warn('Supabase 클라이언트 삭제 실패, 직접 API 시도', error);
+        console.error('❌ [deleteBookmark] Supabase 클라이언트 삭제 실패:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
 
+        // RLS 정책 관련 에러인지 확인
+        if (error.code === 'PGRST301' || error.message?.includes('RLS')) {
+          console.warn('🛡️ [deleteBookmark] RLS 정책 위반으로 판단, 직접 API 시도...');
+        } else if (error.code === '23503') {
+          console.error('🔗 [deleteBookmark] 외래키 제약조건 위반:', error.message);
+          throw new Error('다른 데이터와 연결되어 있어 삭제할 수 없습니다.');
+        } else {
+          console.warn('⚠️ [deleteBookmark] 기타 오류로 직접 API 시도:', error.message);
+        }
+
+        // 직접 API 호출로 재시도
+        console.log('🔄 [deleteBookmark] 직접 API 호출로 재시도...');
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
+        
+        if (!token) {
+          throw new Error('인증 토큰을 가져올 수 없습니다. 다시 로그인해 주세요.');
+        }
+
         const directResult = await directBookmarkDelete(id, token);
 
         if (directResult.error) {
-          throw directResult.error;
+          console.error('❌ [deleteBookmark] 직접 API 호출도 실패:', directResult.error);
+          
+          // 사용자 친화적인 에러 메시지 사용
+          const userMessage = directResult.error.userMessage || directResult.error.message || '알 수 없는 오류';
+          throw new Error(userMessage);
+        }
+        
+        console.log('✅ [deleteBookmark] 직접 API 호출로 삭제 성공');
+      } else {
+        console.log('✅ [deleteBookmark] Supabase 클라이언트로 삭제 성공, 삭제된 레코드 수:', count);
+        
+        // 실제로 삭제되었는지 확인
+        if (count === 0) {
+          console.warn('⚠️ [deleteBookmark] 삭제 요청은 성공했지만 삭제된 레코드가 없음');
+          throw new Error('해당 북마크를 찾을 수 없거나 삭제 권한이 없습니다.');
         }
       }
 
-      console.log('북마크 삭제 성공');
+      // 3. 삭제될 북마크 정보 미리 저장
+      const deletedBookmark = bookmarks.find(b => b.id === id);
+      const deletedBookmarkFolderId = deletedBookmark?.folder_id;
+      
+      console.log('🔄 [deleteBookmark] 로컬 상태 업데이트...');
+      
+      // 4. 북마크 상태 업데이트
       setBookmarks(prev => prev.filter(bookmark => bookmark.id !== id));
+      
+      // 5. 폴더 개수 실시간 업데이트
+      if (deletedBookmarkFolderId) {
+        console.log('📊 [deleteBookmark] 폴더 개수 업데이트:', deletedBookmarkFolderId);
+        
+        setFolders(prev => prev.map(folder => 
+          folder.id === deletedBookmarkFolderId 
+            ? { ...folder, bookmarkCount: Math.max(0, folder.bookmarkCount - 1) }
+            : folder
+        ));
+        
+        // 폴더 트리도 업데이트
+        setFoldersTree(prev => updateFolderCountInTree(prev, deletedBookmarkFolderId, -1));
+        
+        console.log('✅ [deleteBookmark] 폴더 개수 업데이트 완료');
+      }
+
+      console.log('🎉 [deleteBookmark] 북마크 삭제 완료');
       toast.success('북마크가 삭제되었습니다');
+      
     } catch (error) {
-      console.error('북마크 삭제 오류:', error);
-      toast.error('북마크 삭제에 실패했습니다');
+      console.error('💥 [deleteBookmark] 전체 프로세스 실패:', error);
+      
+      // 사용자 친화적인 에러 메시지
+      const errorMessage = error instanceof Error ? error.message : '북마크 삭제에 실패했습니다';
+      toast.error(errorMessage);
     }
   };
 
@@ -778,22 +932,75 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       toast.error('로그인이 필요합니다');
       return;
     }
+    
     try {
-      await folderApi.delete(id)
+      console.log('🗑️ [deleteFolder] 폴더 삭제 시작:', id);
+      
+      // 1. 먼저 해당 폴더에 속한 북마크들의 folder_id를 null로 업데이트
+      console.log('📦 [deleteFolder] 폴더 내 북마크 이동 처리 중...');
+      const { error: updateError } = await supabase
+        .from('bookmarks')
+        .update({ folder_id: null })
+        .eq('folder_id', id)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('❌ [deleteFolder] 북마크 이동 실패:', updateError);
+        throw new Error(`북마크 이동 실패: ${updateError.message}`);
+      }
+      
+      console.log('✅ [deleteFolder] 폴더 내 북마크 이동 완료');
+
+      // 2. 하위 폴더들의 parent_id를 null로 업데이트 (계층 구조 해제)
+      console.log('📁 [deleteFolder] 하위 폴더 처리 중...');
+      const { error: subFolderError } = await supabase
+        .from('folders')
+        .update({ parent_id: null })
+        .eq('parent_id', id)
+        .eq('user_id', user.id);
+
+      if (subFolderError) {
+        console.error('❌ [deleteFolder] 하위 폴더 처리 실패:', subFolderError);
+        throw new Error(`하위 폴더 처리 실패: ${subFolderError.message}`);
+      }
+      
+      console.log('✅ [deleteFolder] 하위 폴더 처리 완료');
+
+      // 3. 폴더 삭제
+      console.log('🗑️ [deleteFolder] 폴더 삭제 실행 중...');
+      await folderApi.delete(id);
+      console.log('✅ [deleteFolder] 폴더 삭제 완료');
+      
+      // 4. 클라이언트 상태 업데이트
+      console.log('🔄 [deleteFolder] 클라이언트 상태 업데이트 중...');
+      
+      // 폴더 목록 업데이트 (삭제된 폴더 제거, 하위 폴더들 루트로 이동)
       setFolders(prev => {
-        const filteredFolders = prev.filter(folder => folder.id !== id);
-        setFoldersTree(buildFoldersTree(filteredFolders));
-        return filteredFolders;
+        const updatedFolders = prev
+          .filter(folder => folder.id !== id) // 삭제된 폴더 제거
+          .map(folder => 
+            folder.parent_id === id 
+              ? { ...folder, parent_id: undefined } // 하위 폴더들을 루트로 이동
+              : folder
+          );
+        setFoldersTree(buildFoldersTree(updatedFolders));
+        return updatedFolders;
       });
+      
+      // 북마크 상태 업데이트 (폴더 참조 제거)
       setBookmarks(prev => prev.map(bookmark =>
         bookmark.folder_id === id
           ? { ...bookmark, folder_id: undefined }
           : bookmark
-      ))
-      toast.success('폴더가 삭제되었습니다')
+      ));
+      
+      console.log('✅ [deleteFolder] 클라이언트 상태 업데이트 완료');
+      toast.success('폴더가 삭제되었고, 폴더 내 북마크는 "모든 북마크"로 이동되었습니다');
+      
     } catch (error) {
-      console.error('Error deleting folder:', error)
-      toast.error('폴더 삭제에 실패했습니다')
+      console.error('💥 [deleteFolder] 폴더 삭제 오류:', error);
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
+      toast.error(`폴더 삭제에 실패했습니다: ${errorMessage}`);
     }
   };
 
