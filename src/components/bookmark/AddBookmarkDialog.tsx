@@ -30,16 +30,21 @@ export default function AddBookmarkDialog({ open, onOpenChange, defaultFolderId 
   const { folders, addBookmark, isLoading, allTags, getFlatFolderList } = useBookmarks();
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
-  const [folderId, setFolderId] = useState<string>(defaultFolderId || "__no_folder__");
+  const [folderId, setFolderId] = useState<string>("__no_folder__");
   const [isAdding, setIsAdding] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
 
-  // defaultFolderId가 변경될 때 folderId 업데이트
+  // 🔥 BUG FIX: 다이얼로그가 열릴 때만 기본 폴더 설정 (사용자 선택 덮어쓰기 방지)
   useEffect(() => {
-    if (defaultFolderId) {
-      setFolderId(defaultFolderId);
+    if (open) {
+      // 다이얼로그가 열릴 때만 기본 폴더 설정
+      if (defaultFolderId) {
+        setFolderId(defaultFolderId);
+      } else {
+        setFolderId("__no_folder__");
+      }
     }
-  }, [defaultFolderId]);
+  }, [open, defaultFolderId]);
 
   const handleSubmit = async () => {
     if (!url.trim()) return;
@@ -47,6 +52,8 @@ export default function AddBookmarkDialog({ open, onOpenChange, defaultFolderId 
     setIsAdding(true);
     try {
       await addBookmark(url, description, folderId === "__no_folder__" ? undefined : folderId, tags);
+      
+      // 성공 후 폼 초기화
       setUrl("");
       setDescription("");
       setFolderId("__no_folder__");
@@ -129,8 +136,6 @@ export default function AddBookmarkDialog({ open, onOpenChange, defaultFolderId 
               disabled={isAdding}
             />
           </div>
-          
-
           
           <div>
             <TagAutocomplete 

@@ -35,13 +35,13 @@ export default function DeleteBookmarkDialog({ open, onOpenChange, bookmark }: D
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-md w-full mx-4">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
-            <DialogTitle>북마크 삭제</DialogTitle>
+            <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+            <DialogTitle className="text-left">북마크 삭제</DialogTitle>
           </div>
-          <DialogDescription>
+          <DialogDescription className="text-left">
             이 북마크를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
           </DialogDescription>
         </DialogHeader>
@@ -49,17 +49,34 @@ export default function DeleteBookmarkDialog({ open, onOpenChange, bookmark }: D
         {bookmark && (
           <div className="py-4">
             <div className="p-3 bg-muted rounded-lg">
-              <div className="text-sm font-medium truncate">{bookmark.title}</div>
-              <div className="text-xs text-muted-foreground truncate">{bookmark.url}</div>
+              <div className="text-sm font-medium break-words mb-1" 
+                   style={{ 
+                     display: '-webkit-box', 
+                     WebkitLineClamp: 2, 
+                     WebkitBoxOrient: 'vertical', 
+                     overflow: 'hidden' 
+                   }}>
+                {bookmark.title}
+              </div>
+              <div className="text-xs text-muted-foreground break-all" 
+                   style={{ 
+                     display: '-webkit-box', 
+                     WebkitLineClamp: 1, 
+                     WebkitBoxOrient: 'vertical', 
+                     overflow: 'hidden' 
+                   }}>
+                {bookmark.url}
+              </div>
             </div>
           </div>
         )}
         
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 flex-wrap">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
+            className="min-w-[60px]"
           >
             취소
           </Button>
@@ -67,11 +84,12 @@ export default function DeleteBookmarkDialog({ open, onOpenChange, bookmark }: D
             variant="destructive" 
             onClick={handleDelete} 
             disabled={isDeleting}
+            className="min-w-[80px]"
           >
             {isDeleting ? (
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                삭제 중...
+                <span className="whitespace-nowrap">삭제 중...</span>
               </div>
             ) : (
               "삭제"

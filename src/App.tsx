@@ -7,8 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookmarkProvider } from "@/contexts/BookmarkContext";
 import { BookmarkViewProvider } from "@/contexts/BookmarkViewContext";
-import { TestPanel } from '@/components/TestPanel';
-import { shouldShowTestPanel } from '@/lib/utils/environment';
+
 
 // Pages
 import Index from "./pages/Index";
@@ -58,7 +57,6 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
-              {shouldShowTestPanel() && <TestPanel />}
             </BookmarkViewProvider>
           </BookmarkProvider>
         </AuthProvider>

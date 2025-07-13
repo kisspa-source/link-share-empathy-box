@@ -48,12 +48,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsAuthenticated(!!user);
   };
 
-  // 디바운스된 handleSession 함수
+  // 🔥 BUG FIX: 세션 처리 로직 단순화 및 최적화
   const handleSession = useCallback(async (session: Session | null) => {
-    console.log('handleSession 호출됨', { session: !!session });
+    console.log('[handleSession] 호출됨', { session: !!session });
     
     if (!session?.user) {
-      console.log('세션에 사용자 정보가 없습니다. 사용자 정보를 초기화합니다.');
+      console.log('[handleSession] 세션에 사용자 정보가 없습니다. 사용자 정보를 초기화합니다.');
       setUser(null);
       setIsLoading(false);
       isHandlingSession.current = false;
@@ -61,18 +61,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    // 중복 처리 방지 - 이미 처리 중이거나 같은 사용자인 경우
-    if (isHandlingSession.current || lastProcessedUserId.current === session.user.id) {
-      console.log('[handleSession] 중복 처리 방지: 이미 처리 중이거나 같은 사용자');
+    // 중복 처리 방지 - 단순화된 체크
+    if (isHandlingSession.current) {
+      console.log('[handleSession] 이미 처리 중입니다. 스킵합니다.');
       return;
     }
 
-    // 이미 같은 사용자 정보가 설정되어 있는 경우 조기 반환
-    if (userState && userState.id === session.user.id) {
-      console.log('[handleSession] 기존 사용자 상태가 존재합니다. 프로필 재요청을 생략합니다.');
+    // 같은 사용자 ID인 경우 조기 반환
+    if (lastProcessedUserId.current === session.user.id) {
+      console.log('[handleSession] 이미 처리된 사용자입니다. 인증 상태만 업데이트합니다.');
       setIsAuthenticated(true);
       setIsLoading(false);
-      lastProcessedUserId.current = session.user.id;
       return;
     }
 
@@ -80,15 +79,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       const userData = session.user;
-      console.log('세션 처리 시작:', {
+      console.log('[handleSession] 세션 처리 시작:', {
         userId: userData.id,
         email: userData.email,
-        metadata: userData.user_metadata,
-        appMetadata: userData.app_metadata
+        provider: userData.app_metadata?.provider
       });
       
       // 기본 사용자 정보 (user_metadata 기반)
-      let newUser = {
+      let newUser: User = {
         id: userData.id,
         email: userData.email || '',
         nickname: userData.user_metadata?.name ||
@@ -101,64 +99,77 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         provider: userData.app_metadata?.provider || 'email'
       };
 
-      // profiles 테이블에서 사용자 설정 정보 조회 (닉네임 우선 적용)
+      // profiles 테이블에서 사용자 설정 정보 조회 (타임아웃 적용)
       try {
-        console.log('[handleSession] profiles 테이블에서 사용자 정보 조회 중...');
-        const { data: profile, error: profileError } = await supabase
+        console.log('[handleSession] 프로필 정보 조회 중...');
+        
+        // 프로필 조회 시 타임아웃 적용 (5초)
+        const profilePromise = supabase
           .from('profiles')
           .select('nickname, avatar_url')
           .eq('id', userData.id)
           .single();
 
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('프로필 조회 타임아웃')), 5000);
+        });
+
+        const { data: profile, error: profileError } = await Promise.race([
+          profilePromise,
+          timeoutPromise
+        ]);
+
         if (!profileError && profile) {
-          console.log('[handleSession] 프로필 정보 조회 성공:', profile);
-          // profiles 테이블의 닉네임이 있으면 우선 사용
-          if (profile.nickname && profile.nickname.trim()) {
+          console.log('[handleSession] 프로필 정보 조회 성공');
+          // profiles 테이블의 정보가 있으면 우선 사용
+          if (profile.nickname?.trim()) {
             newUser.nickname = profile.nickname;
           }
-          // profiles 테이블의 아바타가 있으면 우선 사용
           if (profile.avatar_url) {
             newUser.avatarUrl = profile.avatar_url;
           }
-        } else if (profileError && profileError.code === 'PGRST116') {
-          // 프로필이 없는 경우 새로 생성
+        } else if (profileError?.code === 'PGRST116') {
+          // 프로필이 없는 경우 새로 생성 (백그라운드에서 실행)
           console.log('[handleSession] 프로필이 없어 새로 생성합니다.');
-          const { error: insertError } = await supabase
+          // 비동기로 실행하여 로그인 속도에 영향 주지 않음
+          supabase
             .from('profiles')
             .insert({
               id: userData.id,
               nickname: newUser.nickname,
               avatar_url: newUser.avatarUrl,
+            })
+            .then(({ error }) => {
+              if (error) {
+                console.warn('[handleSession] 프로필 생성 실패:', error.message);
+              } else {
+                console.log('[handleSession] 프로필 생성 성공');
+              }
             });
-          
-          if (insertError) {
-            console.warn('[handleSession] 프로필 생성 실패:', insertError);
-          } else {
-            console.log('[handleSession] 프로필 생성 성공');
-          }
         } else {
-          console.warn('[handleSession] 프로필 조회 오류:', profileError);
+          console.warn('[handleSession] 프로필 조회 오류:', profileError?.message);
         }
       } catch (profileFetchError) {
         console.warn('[handleSession] 프로필 조회 중 오류 발생:', profileFetchError);
         // 오류 발생 시 user_metadata 정보로 진행
       }
       
-      console.log('[handleSession] 프로필 데이터 처리 완료. 최종 newUser:', newUser);
+      console.log('[handleSession] 최종 사용자 정보:', newUser);
 
       setUser(newUser);
       setIsAuthenticated(true);
       lastProcessedUserId.current = userData.id;
     } catch (error) {
-      console.error('세션 처리 중 치명적 오류 발생:', error);
+      console.error('[handleSession] 세션 처리 중 치명적 오류 발생:', error);
       setUser(null);
+      setIsAuthenticated(false);
       lastProcessedUserId.current = null;
     } finally {
-      console.log('[AuthContext] handleSession: setIsLoading(false) 호출');
+      console.log('[handleSession] 처리 완료, isLoading: false 설정');
       setIsLoading(false);
       isHandlingSession.current = false;
     }
-  }, [userState]);
+  }, []); // 🔥 BUG FIX: 의존성 배열 비워서 무한 루프 방지
 
   // 초기 세션 로드
   useEffect(() => {

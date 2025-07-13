@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Github, Mail, Globe } from "lucide-react";
+import { Github, Mail, Globe, Settings, TestTube } from "lucide-react";
+import TestPanel from "@/components/TestPanel";
+import { isDevelopmentMode, isLocalDevelopment } from "@/lib/utils/environment";
 
 // 로그인 제공자별 설정
 const providerConfig = {
@@ -334,6 +336,24 @@ export default function Profile() {
                     <Button type="submit" disabled={isPwLoading}>{isPwLoading ? "변경 중..." : "비밀번호 변경"}</Button>
                   </div>
                 </form>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* 개발자 도구 섹션 */}
+          {(isDevelopmentMode() || isLocalDevelopment()) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TestTube className="h-5 w-5" />
+                  개발자 도구
+                </CardTitle>
+                <CardDescription>
+                  북마크 가져오기 시스템의 성능을 테스트하고 분석할 수 있습니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TestPanel />
               </CardContent>
             </Card>
           )}

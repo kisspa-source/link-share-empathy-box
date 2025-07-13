@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
@@ -12,8 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, Plus, Moon, Sun, User, LogOut, Heart, Bookmark, Menu } from 'lucide-react';
+import { Search, Plus, Moon, Sun, User, LogOut, Heart, Bookmark, Menu, Upload } from 'lucide-react';
 import AddBookmarkDialog from '@/components/bookmark/AddBookmarkDialog';
+import BookmarkUploadDialog from '@/components/bookmark/BookmarkUploadDialog';
 
 interface HeaderProps {
   isMobileMenuOpen?: boolean;
@@ -24,7 +25,19 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
   const { user, logout, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isAddBookmarkOpen, setIsAddBookmarkOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // 🔥 BUG FIX: 현재 위치한 폴더 ID를 파악하여 북마크 추가 시 자동 지정
+  const getCurrentFolderId = (): string | undefined => {
+    // URL 패턴: /folder/{folderId}
+    const folderMatch = location.pathname.match(/^\/folder\/([^\/]+)$/);
+    if (folderMatch) {
+      return folderMatch[1];
+    }
+    return undefined;
+  };
   
   // 간단한 로그아웃 핸들러
   const handleLogout = async () => {
@@ -87,12 +100,33 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
               </Button>
               
               <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsUploadOpen(true)}
+                className="mr-2 hidden sm:flex"
+                title="북마크 가져오기"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                가져오기
+              </Button>
+              
+              <Button 
                 variant="default" 
                 size="icon" 
                 onClick={() => setIsAddBookmarkOpen(true)}
                 className="mr-2 sm:hidden"
               >
                 <Plus className="h-5 w-5" />
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={() => setIsUploadOpen(true)}
+                className="mr-2 sm:hidden"
+                title="북마크 가져오기"
+              >
+                <Upload className="h-5 w-5" />
               </Button>
               
               <DropdownMenu>
@@ -146,7 +180,18 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
           )}
         </div>
       </div>
-      <AddBookmarkDialog open={isAddBookmarkOpen} onOpenChange={setIsAddBookmarkOpen} />
+      {/* 🔥 BUG FIX: 현재 폴더 ID를 전달하여 북마크 추가 시 자동 지정 */}
+      <AddBookmarkDialog 
+        open={isAddBookmarkOpen} 
+        onOpenChange={setIsAddBookmarkOpen}
+        defaultFolderId={getCurrentFolderId()}
+      />
+      
+      {/* 북마크 업로드 다이얼로그 */}
+      <BookmarkUploadDialog 
+        open={isUploadOpen} 
+        onOpenChange={setIsUploadOpen}
+      />
     </header>
   );
 }

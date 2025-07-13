@@ -10,8 +10,18 @@ import {
   directBookmarkDelete,
   folderApi
 } from '../lib/supabase';
-
 import { generateShareUrl } from '../lib/utils';
+import { ImportedBookmark, ImportedFolder, ImportOptions, BookmarkParseResult, ImportProgress } from '../types/importedBookmark';
+import { BookmarkFileValidator } from '../utils/bookmarkValidator';
+import { BookmarkParserFactory } from '../lib/parsers/bookmarkParser';
+import { FolderStructureMapper, MappingResult } from '../lib/mappers/folderStructureMapper';
+import { 
+  calculateOptimalBatchSize, 
+  getMemoryInfo, 
+  forceGarbageCollection,
+  PerformanceMonitor,
+  generateOptimizationRecommendations 
+} from '../lib/utils/performanceOptimizer';
 
 // 폴더 트리에서 특정 폴더의 북마크 개수를 업데이트하는 헬퍼 함수
 const updateFolderCountInTree = (folders: Folder[], folderId: string, delta: number): Folder[] => {
@@ -49,6 +59,11 @@ interface BookmarkContextType {
   getUserCollections: (userId: string) => Collection[];
   getFlatFolderList: () => Folder[]; // 부모 폴더 선택을 위한 플랫 목록
   refreshData: () => void;
+  // 북마크 가져오기 기능 추가
+  importBookmarks: (file: File, options: ImportOptions) => Promise<void>;
+  importProgress: ImportProgress | null;
+  isImporting: boolean;
+  cancelImport: () => void;
 }
 
 const BookmarkContext = createContext<BookmarkContextType | undefined>(undefined);
@@ -62,6 +77,11 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
   const [tags, setTags] = useState<Tag[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 북마크 가져오기 관련 상태
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const importCancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
   
   // 중복 실행 방지를 위한 ref들
   const isLoadingData = useRef(false);
@@ -477,78 +497,80 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         if (!accessToken) {
           throw new Error('인증 토큰을 가져올 수 없습니다. 다시 로그인해 주세요.');
         }
-        
-        console.log('3. 직접 API 호출로 북마크 추가...');
+
+        console.log('3. 직접 API 호출로 북마크 추가 시도...');
         const result = await directBookmarkInsert(bookmarkData, accessToken);
-        console.log('4. 직접 API 호출 결과:', result);
         
         if (result.error) {
-          console.error('직접 API 호출 오류:', result.error);
-          toast.error('북마크 추가 중 오류가 발생했습니다.');
-          return;
+          console.error('❌ 직접 API 호출 실패:', result.error);
+          throw new Error(result.error.userMessage || result.error.message || '북마크 추가에 실패했습니다.');
         }
         
         newBookmarkData = result.data;
-        console.log('5. 북마크 추가 성공:', newBookmarkData);
+        console.log('✅ 직접 API 호출 성공:', newBookmarkData);
         
-        if (!newBookmarkData) {
-          console.error('북마크 추가 결과가 비어있음');
-          toast.error('북마크 추가 결과가 비어 있습니다.');
-          return;
-        }
-      } catch (insertError) {
-        console.error('북마크 추가 오류:', insertError);
-        toast.error('북마크 추가 중 오류가 발생했습니다.');
-        return;
+      } catch (apiError) {
+        console.warn('⚠️ 직접 API 호출 실패, Supabase 클라이언트로 재시도...', apiError);
+        
+        // 백업: Supabase 클라이언트 사용
+        const supabaseResult = await bookmarkApi.create(bookmarkData);
+        newBookmarkData = supabaseResult;
+        console.log('✅ Supabase 클라이언트 성공:', newBookmarkData);
       }
 
-      // 애플리케이션 형식에 맞게 변환 (favicon 동적 생성)
-      const urlDomain = newBookmarkData.url.replace(/https?:\/\//, '').split('/')[0];
-      
+      if (!newBookmarkData) {
+        throw new Error('북마크 생성에 실패했습니다.');
+      }
+
+      // 생성된 북마크 데이터를 UI에 맞게 변환
       const newBookmark: Bookmark = {
         id: newBookmarkData.id,
-        user_id: user.id,
+        user_id: newBookmarkData.user_id,
         url: newBookmarkData.url,
         title: newBookmarkData.title,
         description: newBookmarkData.description || '',
-        image_url: newBookmarkData.image_url || '',
-        thumbnail: newBookmarkData.thumbnail,
-        favicon: generateSafeFavicon(urlDomain),
-
-        folder_id: newBookmarkData.folder_id,
-        tags: typeof newBookmarkData.tags === 'string' ? JSON.parse(newBookmarkData.tags) : (Array.isArray(newBookmarkData.tags) ? newBookmarkData.tags : []),
+        image_url: newBookmarkData.image_url,
+        thumbnail: newBookmarkData.image_url,
+        favicon: metadata.favicon,
         category: category,
-        saved_by: newBookmarkData.saved_by || 0,
+        tags: newBookmarkData.tags || [],
+        folder_id: newBookmarkData.folder_id,
         created_at: newBookmarkData.created_at,
-        updated_at: newBookmarkData.updated_at
+        updated_at: newBookmarkData.updated_at,
+        saved_by: 1 // 저장한 사용자 수 (신규 북마크이므로 1)
       };
 
-      // 상태 업데이트
-      setBookmarks(prev => [newBookmark, ...prev]);
+      console.log('4. 북마크 상태 업데이트:', newBookmark);
       
-      // 폴더 개수 실시간 업데이트
+      // 로컬 상태에 새 북마크 추가
+      setBookmarks(prev => [newBookmark, ...prev]);
+
+      // 🔥 BUG FIX: 폴더 개수 실시간 업데이트 추가
       if (folderId) {
+        console.log('📊 [addBookmark] 폴더 개수 업데이트:', folderId);
+        
+        // 폴더 개수 업데이트
         setFolders(prev => prev.map(folder => 
           folder.id === folderId 
             ? { ...folder, bookmarkCount: folder.bookmarkCount + 1 }
             : folder
         ));
+        
+        // 폴더 트리도 업데이트
         setFoldersTree(prev => updateFolderCountInTree(prev, folderId, 1));
-        console.log('📊 [addBookmark] 폴더 개수 업데이트 완료:', folderId);
+        
+        console.log('✅ [addBookmark] 폴더 개수 업데이트 완료');
       }
-      
-      toast.success('북마크가 빠르게 저장되었습니다! 🚀');
-      
-      // Edge Functions으로 메타데이터 개선 (백그라운드에서 실행)
-      if (typeof window !== 'undefined') {
-        setTimeout(() => {
-          console.log('💡 메타데이터는 Edge Functions에서 백그라운드로 업데이트됩니다.');
-        }, 100);
-      }
+
+      console.log('🎉 북마크 추가 완료!');
+      toast.success('북마크가 추가되었습니다');
       
     } catch (error) {
-      console.error('addBookmark 전체 에러:', error);
-      toast.error('북마크 저장에 실패했습니다');
+      console.error('💥 북마크 추가 실패:', error);
+      
+      // 사용자 친화적인 에러 메시지
+      const errorMessage = error instanceof Error ? error.message : '북마크 추가에 실패했습니다';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -563,11 +585,25 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('🔄 [updateBookmark] 북마크 수정 시도:', id, updates);
 
-      // 폴더 이동이 있는지 확인 (개수 업데이트를 위해)
+      // 🔥 BUG FIX: 폴더 이동 감지 로직 개선
       const currentBookmark = bookmarks.find(b => b.id === id);
-      const isMovingFolder = updates.folder_id !== undefined && currentBookmark?.folder_id !== updates.folder_id;
-      const oldFolderId = currentBookmark?.folder_id;
-      const newFolderId = updates.folder_id;
+      if (!currentBookmark) {
+        console.warn('⚠️ [updateBookmark] 수정할 북마크를 찾을 수 없음:', id);
+        toast.error('수정할 북마크를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 폴더 이동 상세 분석
+      const oldFolderId = currentBookmark.folder_id || null;
+      const newFolderId = updates.folder_id === '' ? null : updates.folder_id || null;
+      const isMovingFolder = 'folder_id' in updates && oldFolderId !== newFolderId;
+
+      console.log('📊 [updateBookmark] 폴더 이동 분석:', {
+        oldFolderId,
+        newFolderId,
+        isMovingFolder,
+        updates_folder_id: updates.folder_id
+      });
 
       const { error } = await supabase
         .from('bookmarks')
@@ -589,18 +625,22 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
           : bookmark
       ));
 
-      // 폴더 이동 시 개수 업데이트
+      // 🔥 BUG FIX: 폴더 이동 시 개수 업데이트 개선
       if (isMovingFolder) {
-        console.log('📊 [updateBookmark] 폴더 이동 감지:', { from: oldFolderId, to: newFolderId });
+        console.log('📊 [updateBookmark] 폴더 이동 감지 - 개수 업데이트 시작');
         
         setFolders(prev => prev.map(folder => {
           if (folder.id === oldFolderId) {
             // 이전 폴더 개수 -1
-            return { ...folder, bookmarkCount: Math.max(0, folder.bookmarkCount - 1) };
+            const newCount = Math.max(0, folder.bookmarkCount - 1);
+            console.log(`📊 [updateBookmark] 이전 폴더 ${oldFolderId} 개수: ${folder.bookmarkCount} → ${newCount}`);
+            return { ...folder, bookmarkCount: newCount };
           }
           if (folder.id === newFolderId) {
             // 새 폴더 개수 +1
-            return { ...folder, bookmarkCount: folder.bookmarkCount + 1 };
+            const newCount = folder.bookmarkCount + 1;
+            console.log(`📊 [updateBookmark] 새 폴더 ${newFolderId} 개수: ${folder.bookmarkCount} → ${newCount}`);
+            return { ...folder, bookmarkCount: newCount };
           }
           return folder;
         }));
@@ -609,19 +649,24 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         let updatedTree = foldersTree;
         if (oldFolderId) {
           updatedTree = updateFolderCountInTree(updatedTree, oldFolderId, -1);
+          console.log(`📊 [updateBookmark] 폴더 트리에서 ${oldFolderId} -1 적용`);
         }
         if (newFolderId) {
           updatedTree = updateFolderCountInTree(updatedTree, newFolderId, 1);
+          console.log(`📊 [updateBookmark] 폴더 트리에서 ${newFolderId} +1 적용`);
         }
         setFoldersTree(updatedTree);
         
-        console.log('📊 [updateBookmark] 폴더 개수 업데이트 완료');
+        console.log('✅ [updateBookmark] 폴더 개수 업데이트 완료');
       }
 
       toast.success('북마크가 수정되었습니다');
     } catch (error) {
       console.error('💥 [updateBookmark] 북마크 수정 오류:', error);
-      toast.error('북마크 수정에 실패했습니다');
+      
+      // 사용자 친화적인 에러 메시지
+      const errorMessage = error instanceof Error ? error.message : '북마크 수정에 실패했습니다';
+      toast.error(errorMessage);
     }
   };
 
@@ -634,6 +679,16 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('🗑️ [deleteBookmark] 북마크 삭제 시작:', id);
       console.log('🗑️ [deleteBookmark] 사용자 ID:', user.id);
+
+      // 🔥 BUG FIX: 삭제될 북마크 정보를 미리 저장 (상태 업데이트 전)
+      const deletedBookmark = bookmarks.find(b => b.id === id);
+      const deletedBookmarkFolderId = deletedBookmark?.folder_id;
+      
+      if (!deletedBookmark) {
+        console.warn('⚠️ [deleteBookmark] 삭제할 북마크를 찾을 수 없음:', id);
+        toast.error('삭제할 북마크를 찾을 수 없습니다.');
+        return;
+      }
 
       // 1. 먼저 외래키 제약조건 확인 - collection_bookmarks에서 해당 북마크 제거
       console.log('🔗 [deleteBookmark] 컬렉션-북마크 관계 확인 중...');
@@ -724,16 +779,13 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // 3. 삭제될 북마크 정보 미리 저장
-      const deletedBookmark = bookmarks.find(b => b.id === id);
-      const deletedBookmarkFolderId = deletedBookmark?.folder_id;
-      
+      // 🔥 BUG FIX: 삭제가 성공한 후에만 로컬 상태 업데이트
       console.log('🔄 [deleteBookmark] 로컬 상태 업데이트...');
       
-      // 4. 북마크 상태 업데이트
+      // 3. 북마크 상태 업데이트
       setBookmarks(prev => prev.filter(bookmark => bookmark.id !== id));
       
-      // 5. 폴더 개수 실시간 업데이트
+      // 4. 폴더 개수 실시간 업데이트
       if (deletedBookmarkFolderId) {
         console.log('📊 [deleteBookmark] 폴더 개수 업데이트:', deletedBookmarkFolderId);
         
@@ -852,12 +904,15 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       const formattedFolder: Folder = {
         id: newFolder.id,
         name: newFolder.name,
-        bookmarkCount: 0,
         icon_name: newFolder.icon_name || 'folder',
         icon_color: newFolder.icon_color || '#3B82F6',
         icon_category: newFolder.icon_category || 'default',
         parent_id: newFolder.parent_id,
         user_id: newFolder.user_id,
+        bookmarkCount: 0,
+        depth: 0,
+        path: [],
+        children: [],
         created_at: newFolder.created_at,
         updated_at: newFolder.updated_at
       };
@@ -1021,6 +1076,499 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
     );
   }, [collections]);
 
+  // 취소 기능
+  const cancelImport = useCallback(() => {
+    importCancelRef.current.cancelled = true;
+    setImportProgress(prev => prev ? {
+      ...prev,
+      cancelRequested: true,
+      currentItem: '취소 중...'
+    } : null);
+  }, []);
+
+  // 북마크 가져오기 기능 구현
+  const importBookmarks = async (file: File, options: ImportOptions) => {
+    if (!user) {
+      toast.error('북마크를 가져오려면 로그인해야 합니다.');
+      return;
+    }
+
+    // 취소 상태 초기화
+    importCancelRef.current.cancelled = false;
+    
+    setIsImporting(true);
+    const startTime = new Date();
+    
+    setImportProgress({
+      currentStep: 'parsing',
+      currentItem: '파일 검증 중...',
+      processed: 0,
+      total: 0,
+      percentage: 0,
+      duplicatesFound: [],
+      errors: [],
+      // 새로운 필드들 추가
+      phase: 'validation',
+      phaseProgress: 0,
+      totalPhases: 5,
+      currentPhase: 1,
+      cancelRequested: false,
+      canCancel: true,
+      startTime,
+      statistics: {
+        foldersCreated: 0,
+        bookmarksImported: 0,
+        duplicatesSkipped: 0,
+        errorsEncountered: 0
+      }
+    });
+
+    // 변수들을 try 블록 밖에서 선언
+    let parseResult: BookmarkParseResult | null = null;
+    let mappingResult: MappingResult | null = null;
+    let bookmarksImported = 0;
+    let errorsEncountered = 0;
+    let createdFolders: Map<string, string> = new Map();
+
+    try {
+      // 1. 파일 유효성 검증
+      const validationResult = BookmarkFileValidator.validateFile(file);
+      if (!validationResult.isValid) {
+        throw new Error(validationResult.errors.join('\n'));
+      }
+
+      // 2. 파일 내용 읽기
+      const fileContent = await file.text();
+      
+      // 파일 타입이 unknown인 경우 건너뛰기
+      if (validationResult.fileType !== 'unknown') {
+        const contentValidation = BookmarkFileValidator.validateFileContent(fileContent, validationResult.fileType);
+        if (!contentValidation.isValid) {
+          throw new Error(contentValidation.errors.join('\n'));
+        }
+      }
+
+      // 3. 파일 파싱
+      setImportProgress(prev => prev ? {
+        ...prev,
+        currentStep: 'parsing',
+        currentItem: '북마크 파일 파싱 중...',
+        percentage: 10,
+        phase: 'parsing',
+        phaseProgress: 20,
+        currentPhase: 2,
+        canCancel: true
+      } : null);
+
+      // 취소 체크
+      if (importCancelRef.current.cancelled) {
+        throw new Error('사용자가 취소했습니다.');
+      }
+
+      parseResult = BookmarkParserFactory.parseBookmarkFile(fileContent);
+      if (!parseResult.success || !parseResult.data) {
+        throw new Error(parseResult.error || '파일 파싱에 실패했습니다.');
+      }
+
+      // 4. 폴더 구조 매핑 및 북마크 처리
+      setImportProgress(prev => prev ? {
+        ...prev,
+        currentStep: 'analyzing',
+        currentItem: '폴더 구조 분석 중...',
+        percentage: 30,
+        total: parseResult.data.totalBookmarks,
+        phase: 'folder-creation',
+        phaseProgress: 40,
+        currentPhase: 3,
+        canCancel: true
+      } : null);
+
+      // 취소 체크
+      if (importCancelRef.current.cancelled) {
+        throw new Error('사용자가 취소했습니다.');
+      }
+
+      const mapper = new FolderStructureMapper(folders, options);
+      mappingResult = await mapper.mapToApplicationStructure(parseResult.data);
+
+      // 5. 데이터베이스에 저장
+      setImportProgress(prev => prev ? {
+        ...prev,
+        currentStep: 'importing',
+        currentItem: '폴더 생성 중...',
+        percentage: 50,
+        phase: 'folder-creation',
+        phaseProgress: 60,
+        currentPhase: 4,
+        canCancel: false // 데이터베이스 작업 중에는 취소 불가
+      } : null);
+
+      // 먼저 폴더들을 생성 (의존성 순서대로 - 이미 깊이 순으로 정렬됨)
+      createdFolders = new Map<string, string>(); // 원본 경로 -> 새 폴더 ID
+      
+      for (const folderRequest of mappingResult.folders) {
+        try {
+          // 부모 폴더 ID 해결
+          let parentId = folderRequest.parent_id;
+          
+          // 부모 폴더가 지정되지 않은 경우, 경로에서 부모 폴더 찾기
+          if (!parentId && folderRequest.originalPath.includes('/')) {
+            const parentPath = folderRequest.originalPath.split('/').slice(0, -1).join('/');
+            parentId = createdFolders.get(parentPath);
+          }
+
+          const newFolder = await folderApi.create(
+            folderRequest.name,
+            user.id,
+            parentId,
+            folderRequest.icon_name,
+            folderRequest.icon_color,
+            folderRequest.icon_category
+          );
+
+          createdFolders.set(folderRequest.originalPath, newFolder.id);
+          
+          // 폴더 상태 업데이트
+          setFolders(prev => [...prev, {
+            id: newFolder.id,
+            name: newFolder.name,
+            icon_name: newFolder.icon_name,
+            icon_color: newFolder.icon_color,
+            icon_category: newFolder.icon_category,
+            parent_id: newFolder.parent_id,
+            user_id: newFolder.user_id,
+            bookmarkCount: 0,
+            depth: 0,
+            path: [],
+            children: [],
+            created_at: newFolder.created_at,
+            updated_at: newFolder.updated_at
+          }]);
+
+        } catch (error) {
+          console.error('폴더 생성 실패:', error);
+          mappingResult.errors.push(`폴더 생성 실패: ${folderRequest.name}`);
+        }
+      }
+
+      // 북마크 배치 처리 - 성능 최적화 적용
+      const performanceMonitor = new PerformanceMonitor();
+      const memoryInfo = getMemoryInfo();
+      const adaptiveBatchSize = calculateOptimalBatchSize(
+        mappingResult.bookmarks.length,
+        'medium'
+      );
+      
+      console.log('성능 최적화 정보:', {
+        totalBookmarks: mappingResult.bookmarks.length,
+        adaptiveBatchSize,
+        memoryInfo: memoryInfo ? 
+          `${(memoryInfo.usedJSHeapSize / 1024 / 1024).toFixed(1)}MB / ${(memoryInfo.jsHeapSizeLimit / 1024 / 1024).toFixed(1)}MB` : 
+          'N/A',
+        memoryPressure: memoryInfo?.memoryPressure || 'unknown'
+      });
+      
+      let batchSize = adaptiveBatchSize;
+      const totalBatches = Math.ceil(mappingResult.bookmarks.length / batchSize);
+      let processed = 0;
+      // bookmarksImported와 errorsEncountered는 이미 위에서 선언됨
+      
+      setImportProgress(prev => prev ? {
+        ...prev,
+        currentItem: '북마크 가져오기 중...',
+        percentage: 70,
+        phase: 'bookmark-import',
+        phaseProgress: 0,
+        currentPhase: 5,
+        canCancel: false,
+        batchInfo: {
+          currentBatch: 0,
+          totalBatches,
+          batchSize
+        }
+      } : null);
+
+      for (let i = 0; i < mappingResult.bookmarks.length; i += batchSize) {
+        // 취소 체크
+        if (importCancelRef.current.cancelled) {
+          throw new Error('사용자가 취소했습니다.');
+        }
+
+        const batch = mappingResult.bookmarks.slice(i, i + batchSize);
+        const currentBatch = Math.floor(i / batchSize) + 1;
+        
+        // 배치 정보 업데이트
+        setImportProgress(prev => prev ? {
+          ...prev,
+          currentItem: `북마크 가져오기 중... (${currentBatch}/${totalBatches} 배치)`,
+          batchInfo: {
+            currentBatch,
+            totalBatches,
+            batchSize
+          }
+        } : null);
+        
+        // 병렬 처리로 성능 개선 - 메모리 모니터링 추가
+        await Promise.all(batch.map(async (bookmarkRequest) => {
+          const itemStartTime = performance.now();
+          
+          try {
+            // 폴더 ID 해결
+            let folderId = bookmarkRequest.folder_id;
+            if (!folderId && bookmarkRequest.tags?.includes('folder:')) {
+              const folderTag = bookmarkRequest.tags.find(t => t.startsWith('folder:'));
+              if (folderTag) {
+                const folderPath = folderTag.substring(7);
+                folderId = createdFolders.get(folderPath);
+              }
+            }
+
+            // 북마크 생성 데이터 준비
+            const bookmarkData = {
+              user_id: user.id,
+              url: bookmarkRequest.url,
+              title: bookmarkRequest.title,
+              description: bookmarkRequest.description || '',
+              image_url: bookmarkRequest.image_url || `https://image.thum.io/get/width/1200/crop/800/${encodeURIComponent(bookmarkRequest.url)}`,
+              folder_id: folderId,
+              tags: bookmarkRequest.tags || [],
+            };
+
+            // 북마크 저장
+            const newBookmark = await bookmarkApi.create(bookmarkData);
+            
+            // 북마크 상태 업데이트
+            setBookmarks(prev => [
+              ...prev,
+              {
+                id: newBookmark.id,
+                user_id: newBookmark.user_id,
+                url: newBookmark.url,
+                title: newBookmark.title,
+                description: newBookmark.description || '',
+                image_url: newBookmark.image_url,
+                thumbnail: newBookmark.image_url,
+                favicon: generateSafeFavicon(newBookmark.url.replace(/https?:\/\//, '').split('/')[0]),
+                category: 'Other' as Category,
+                tags: newBookmark.tags || [],
+                folder_id: newBookmark.folder_id,
+                created_at: newBookmark.created_at,
+                updated_at: newBookmark.updated_at,
+                saved_by: 1
+              }
+            ]);
+
+            processed++;
+            bookmarksImported++;
+            
+            // 성능 메트릭 기록
+            const itemProcessingTime = performance.now() - itemStartTime;
+            performanceMonitor.recordItemProcessed(itemProcessingTime);
+            
+            // 진행률 업데이트 (시간 추정 포함)
+            const currentTime = new Date();
+            const elapsedTime = currentTime.getTime() - startTime.getTime();
+            const processingSpeed = processed / (elapsedTime / 1000);
+            const remainingItems = mappingResult.bookmarks.length - processed;
+            const estimatedTimeRemaining = remainingItems / processingSpeed;
+            
+            setImportProgress(prev => prev ? {
+              ...prev,
+              processed,
+              percentage: 70 + (processed / mappingResult.bookmarks.length) * 25,
+              phaseProgress: (processed / mappingResult.bookmarks.length) * 100,
+              processingSpeed,
+              estimatedTimeRemaining,
+              statistics: {
+                ...prev.statistics!,
+                bookmarksImported,
+                errorsEncountered
+              }
+            } : null);
+
+          } catch (error) {
+            console.error('북마크 생성 실패:', error);
+            mappingResult.errors.push(`북마크 생성 실패: ${bookmarkRequest.title}`);
+            errorsEncountered++;
+            performanceMonitor.recordError();
+          }
+        }));
+        
+        // 배치 완료 후 메모리 체크 및 최적화
+        const currentMemoryInfo = getMemoryInfo();
+        if (currentMemoryInfo?.memoryPressure === 'high') {
+          console.warn('메모리 압박 감지, 배치 크기 조정 및 가비지 컬렉션 실행');
+          batchSize = Math.max(3, Math.floor(batchSize * 0.7));
+          await forceGarbageCollection();
+          
+          // 메모리 압박 상황 알림
+          setImportProgress(prev => prev ? {
+            ...prev,
+            currentItem: `메모리 최적화 중... (배치 크기: ${batchSize})`
+          } : null);
+        }
+      }
+
+      // 폴더 트리 재구성
+      setFoldersTree(buildFoldersTree(folders));
+
+      // 북마크 개수 검증
+      const expectedBookmarks = parseResult.data.totalBookmarks;
+      const actualBookmarks = bookmarksImported;
+      const skippedBookmarks = mappingResult.duplicates.filter(d => d.type === 'bookmark' && d.action === 'skip').length;
+      
+      console.log('북마크 개수 검증:', {
+        expected: expectedBookmarks,
+        imported: actualBookmarks,
+        skipped: skippedBookmarks,
+        errors: errorsEncountered,
+        total: actualBookmarks + skippedBookmarks + errorsEncountered
+      });
+
+      // 불일치 시 상세 로깅
+      if (expectedBookmarks !== actualBookmarks + skippedBookmarks + errorsEncountered) {
+        const difference = expectedBookmarks - (actualBookmarks + skippedBookmarks + errorsEncountered);
+        console.warn('북마크 개수 불일치 감지:', {
+          expected: expectedBookmarks,
+          actualImported: actualBookmarks,
+          skipped: skippedBookmarks,
+          errors: errorsEncountered,
+          difference,
+          possibleCauses: [
+            '파싱 단계에서 중복된 북마크 카운트',
+            '폴더 구조 내 누락된 북마크',
+            '비동기 처리 중 일부 북마크 누락',
+            '유효하지 않은 URL로 인한 스킵'
+          ]
+        });
+        
+        // 경고 메시지 추가
+        mappingResult.errors.push(`북마크 개수 불일치: 예상 ${expectedBookmarks}개, 실제 처리 ${actualBookmarks + skippedBookmarks + errorsEncountered}개`);
+      }
+
+      // 완료
+      setImportProgress(prev => prev ? {
+        ...prev,
+        currentStep: 'completed',
+        currentItem: '가져오기 완료',
+        percentage: 100,
+        phase: 'completed',
+        phaseProgress: 100,
+        canCancel: false,
+        statistics: {
+          ...prev.statistics!,
+          foldersCreated: createdFolders.size,
+          bookmarksImported,
+          errorsEncountered
+        }
+      } : null);
+
+      // 성능 메트릭 완료 및 분석
+      const finalMetrics = performanceMonitor.finish();
+      const recommendations = generateOptimizationRecommendations(finalMetrics);
+      
+      console.log('성능 분석 결과:', {
+        duration: finalMetrics.duration,
+        itemsProcessed: finalMetrics.itemsProcessed,
+        averageItemProcessingTime: finalMetrics.averageItemProcessingTime,
+        errorCount: finalMetrics.errorCount,
+        memoryUsage: {
+          initial: finalMetrics.memoryUsage.initial ? 
+            `${(finalMetrics.memoryUsage.initial.usedJSHeapSize / 1024 / 1024).toFixed(1)}MB` : 'N/A',
+          final: finalMetrics.memoryUsage.final ? 
+            `${(finalMetrics.memoryUsage.final.usedJSHeapSize / 1024 / 1024).toFixed(1)}MB` : 'N/A',
+          peak: finalMetrics.memoryUsage.peak ? 
+            `${(finalMetrics.memoryUsage.peak.usedJSHeapSize / 1024 / 1024).toFixed(1)}MB` : 'N/A'
+        },
+        recommendations
+      });
+      
+      const completionMessage = `북마크 가져오기 완료! ${bookmarksImported}개의 북마크와 ${createdFolders.size}개의 폴더가 추가되었습니다.`;
+      const duration = finalMetrics.duration ? Math.round(finalMetrics.duration / 1000) : 0;
+      const hasErrors = errorsEncountered > 0 || mappingResult.errors.length > 0;
+      
+      if (hasErrors) {
+        const errorSummary = `경고: ${errorsEncountered}개의 북마크 저장 실패, ${mappingResult.errors.length}개의 추가 오류 발생`;
+        toast.warning(`${completionMessage}\n${errorSummary} (${duration}초 소요)`, {
+          duration: 8000
+        });
+        
+        // 에러 세부 정보 콘솔 출력
+        console.error('가져오기 완료 (에러 포함):', {
+          성공: { 북마크: bookmarksImported, 폴더: createdFolders.size },
+          에러: { 북마크실패: errorsEncountered, 기타오류: mappingResult.errors },
+          성능: { 소요시간: duration, 평균처리시간: finalMetrics.averageItemProcessingTime },
+          메모리: finalMetrics.memoryUsage
+        });
+      } else {
+        toast.success(`${completionMessage} (${duration}초 소요)`);
+      }
+      
+      // 성능 개선 추천 사항이 있으면 추가 토스트 표시
+      if (recommendations.length > 0) {
+        setTimeout(() => {
+          toast.info(`성능 개선 추천: ${recommendations[0]}`, {
+            duration: 5000
+          });
+        }, 2000);
+      }
+
+    } catch (error) {
+      console.error('북마크 가져오기 오류:', error);
+      
+      const isUserCancelled = error instanceof Error && error.message.includes('취소');
+      
+      setImportProgress(prev => prev ? {
+        ...prev,
+        currentStep: isUserCancelled ? 'cancelled' : 'error',
+        currentItem: isUserCancelled ? '취소됨' : '오류 발생',
+        errors: [...(prev.errors || []), error instanceof Error ? error.message : '알 수 없는 오류'],
+        canCancel: false
+      } : null);
+
+      if (isUserCancelled) {
+        toast.info('북마크 가져오기가 취소되었습니다.');
+      } else {
+        // 에러 상세 정보 제공
+        const errorDetails = error instanceof Error ? error.message : '알 수 없는 오류';
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        
+        toast.error(`북마크 가져오기 실패: ${errorDetails}`, {
+          duration: 8000
+        });
+        
+        // 상세 에러 정보 콘솔 출력
+        console.error('북마크 가져오기 상세 에러:', {
+          message: errorDetails,
+          stack: errorStack,
+          파싱데이터: parseResult?.data ? {
+            총북마크: parseResult.data.totalBookmarks,
+            총폴더: parseResult.data.totalFolders,
+            브라우저: parseResult.data.browser
+          } : 'N/A',
+          매핑결과: mappingResult ? {
+            폴더요청: mappingResult.folders.length,
+            북마크요청: mappingResult.bookmarks.length,
+            중복: mappingResult.duplicates.length,
+            에러: mappingResult.errors.length
+          } : 'N/A',
+          상태: {
+            처리된북마크: bookmarksImported || 0,
+            생성된폴더: createdFolders?.size || 0,
+            에러발생: errorsEncountered || 0
+          }
+        });
+      }
+    } finally {
+      setIsImporting(false);
+      // 5초 후 진행률 초기화 (사용자가 결과를 확인할 시간 제공)
+      setTimeout(() => {
+        setImportProgress(null);
+        importCancelRef.current.cancelled = false; // 취소 상태 초기화
+      }, 5000);
+    }
+  };
+
   return (
     <BookmarkContext.Provider value={{
       bookmarks: isLoading ? [] : bookmarks,
@@ -1044,7 +1592,11 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       getCollection,
       getUserCollections,
       getFlatFolderList,
-      refreshData
+      refreshData,
+      importBookmarks,
+      importProgress,
+      isImporting,
+      cancelImport
     }}>
       {children}
     </BookmarkContext.Provider>

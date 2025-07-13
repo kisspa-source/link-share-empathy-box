@@ -13,6 +13,28 @@ interface ColorPickerProps {
 export function ColorPicker({ selectedColor, onColorSelect, className, showTitle = true }: ColorPickerProps) {
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
 
+  // 색상 검증 함수 - VARCHAR(7) 제한 체크
+  const validateColor = (color: string): string => {
+    if (!color || color.length !== 7 || !color.startsWith('#')) {
+      console.warn(`Invalid color format: ${color}, using default blue`);
+      return '#3B82F6'; // 기본 파란색
+    }
+    
+    // 헥스 색상 코드 유효성 검사
+    const hexPattern = /^#[0-9A-F]{6}$/i;
+    if (!hexPattern.test(color)) {
+      console.warn(`Invalid hex color: ${color}, using default blue`);
+      return '#3B82F6';
+    }
+    
+    return color;
+  };
+
+  const handleColorSelect = (color: string) => {
+    const validatedColor = validateColor(color);
+    onColorSelect(validatedColor);
+  };
+
   return (
     <div className={cn("space-y-3", className)}>
       {showTitle && (
@@ -35,7 +57,7 @@ export function ColorPicker({ selectedColor, onColorSelect, className, showTitle
               "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             )}
             style={{ backgroundColor: color }}
-            onClick={() => onColorSelect(color)}
+            onClick={() => handleColorSelect(color)}
             onMouseEnter={() => setHoveredColor(color)}
             onMouseLeave={() => setHoveredColor(null)}
             aria-label={`색상 ${color} 선택`}

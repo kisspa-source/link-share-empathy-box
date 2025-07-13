@@ -508,15 +508,36 @@ export const folderApi = {
   },
 
   async create(name: string, userId: string, parentId?: string, iconName?: string, iconColor?: string, iconCategory?: string) {
+    // 색상 검증 함수 - VARCHAR(7) 제한 체크
+    const validateColor = (color: string): string => {
+      if (!color || color.length !== 7 || !color.startsWith('#')) {
+        console.warn(`Invalid color format: ${color}, using default blue`);
+        return '#3B82F6'; // 기본 파란색
+      }
+      
+      // 헥스 색상 코드 유효성 검사
+      const hexPattern = /^#[0-9A-F]{6}$/i;
+      if (!hexPattern.test(color)) {
+        console.warn(`Invalid hex color: ${color}, using default blue`);
+        return '#3B82F6';
+      }
+      
+      return color;
+    };
+
     // 인증 토큰 가져오기
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
+    
+    // 색상 검증 적용
+    const validatedColor = validateColor(iconColor ?? '#3B82F6');
+    
     const folder = { 
       name, 
       user_id: userId, 
       parent_id: parentId ?? null,
       icon_name: iconName ?? 'folder',
-      icon_color: iconColor ?? '#3B82F6',
+      icon_color: validatedColor,
       icon_category: iconCategory ?? 'default'
     };
     // 1. 직접 fetch로 시도

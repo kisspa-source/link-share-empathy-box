@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EditFolderDialog } from "@/components/folder/EditFolderDialog";
 import { CreateFolderDialog } from "@/components/folder/CreateFolderDialog";
+import DeleteFolderDialog from "@/components/folder/DeleteFolderDialog";
 import { getSafeIconByName } from "@/lib/icons";
 import type { Folder as FolderType } from "@/types/bookmark";
 
@@ -118,6 +119,8 @@ const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMen
   const { isCollapsed, toggle } = useSidebarToggle();
   const [editingFolder, setEditingFolder] = useState<FolderType | null>(null);
   const [isEditFolderOpen, setIsEditFolderOpen] = useState(false);
+  const [deletingFolder, setDeletingFolder] = useState<FolderType | null>(null);
+  const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   
   // Function to determine if a link is active
@@ -151,15 +154,10 @@ const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMen
     setIsEditFolderOpen(true);
   }, []);
 
-  const handleDeleteFolder = useCallback(async (folder: FolderType) => {
-    const confirmMessage = folder.bookmarkCount > 0 
-      ? `"${folder.name}" 폴더를 삭제하시겠습니까?\n\n폴더 내 ${folder.bookmarkCount}개의 북마크는 "모든 북마크"로 이동됩니다.\n하위 폴더가 있다면 최상위 폴더로 이동됩니다.`
-      : `"${folder.name}" 폴더를 삭제하시겠습니까?\n\n하위 폴더가 있다면 최상위 폴더로 이동됩니다.`;
-      
-    if (window.confirm(confirmMessage)) {
-      await deleteFolder(folder.id);
-    }
-  }, [deleteFolder]);
+  const handleDeleteFolder = useCallback((folder: FolderType) => {
+    setDeletingFolder(folder);
+    setIsDeleteFolderOpen(true);
+  }, []);
 
   const handleLinkClick = useCallback(() => {
     // 모바일에서 링크 클릭 시 사이드바 닫기
@@ -426,6 +424,13 @@ const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMen
           folder={editingFolder}
         />
       )}
+      
+      {/* 폴더 삭제 다이얼로그 */}
+      <DeleteFolderDialog
+        open={isDeleteFolderOpen}
+        onOpenChange={setIsDeleteFolderOpen}
+        folder={deletingFolder}
+      />
     </>
   );
 });

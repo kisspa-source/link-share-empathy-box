@@ -568,3 +568,186 @@ export async function testBookmarkDeletion(): Promise<boolean> {
     return false;
   }
 }
+
+// 북마크 가져오기 테스트를 위한 유틸리티 함수들
+
+/**
+ * 테스트용 HTML 북마크 파일 생성
+ * @param bookmarkCount 생성할 북마크 개수
+ * @param folderCount 생성할 폴더 개수
+ * @param maxDepth 최대 폴더 깊이
+ */
+export function generateTestBookmarkHTML(
+  bookmarkCount: number = 50,
+  folderCount: number = 10,
+  maxDepth: number = 3
+): string {
+  const sampleUrls = [
+    'https://github.com/microsoft/vscode',
+    'https://stackoverflow.com/questions/tagged/javascript',
+    'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'https://www.google.com/search?q=react+hooks',
+    'https://nodejs.org/en/docs/',
+    'https://reactjs.org/docs/getting-started.html',
+    'https://tailwindcss.com/docs',
+    'https://supabase.com/docs',
+    'https://vercel.com/docs',
+    'https://nextjs.org/docs',
+    'https://typescript-lang.org/docs',
+    'https://www.figma.com/design',
+    'https://medium.com/@developer/article',
+    'https://www.linkedin.com/in/developer'
+  ];
+
+  const folderNames = [
+    'Development',
+    'Design',
+    'Resources',
+    'Tools',
+    'Learning',
+    'Projects',
+    'Documentation',
+    'Tutorials',
+    'Articles',
+    'Videos'
+  ];
+
+  let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!--This is an automatically generated file.
+It will be read and overwritten.
+DO NOT EDIT! -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+`;
+
+  // 폴더 구조 생성
+  const folders = generateFolderStructure(folderNames, folderCount, maxDepth);
+  
+  // 북마크 분배
+  const bookmarksPerFolder = Math.ceil(bookmarkCount / Math.max(1, folderCount));
+  let bookmarkIndex = 0;
+
+  function generateFolderHTML(folder: TestFolder, depth: number = 0): string {
+    const indent = '    '.repeat(depth);
+    let folderHTML = `${indent}<DT><H3 ADD_DATE="${Date.now()}" LAST_MODIFIED="${Date.now()}">${folder.name}</H3>\n`;
+    folderHTML += `${indent}<DL><p>\n`;
+
+    // 폴더 내 북마크 생성
+    for (let i = 0; i < folder.bookmarkCount && bookmarkIndex < bookmarkCount; i++) {
+      const url = sampleUrls[bookmarkIndex % sampleUrls.length];
+      const title = `${folder.name} Bookmark ${i + 1}`;
+      folderHTML += `${indent}    <DT><A HREF="${url}" ADD_DATE="${Date.now()}" LAST_MODIFIED="${Date.now()}">${title}</A>\n`;
+      bookmarkIndex++;
+    }
+
+    // 하위 폴더 생성
+    for (const childFolder of folder.children) {
+      folderHTML += generateFolderHTML(childFolder, depth + 1);
+    }
+
+    folderHTML += `${indent}</DL><p>\n`;
+    return folderHTML;
+  }
+
+  // 폴더 HTML 생성
+  for (const folder of folders) {
+    html += generateFolderHTML(folder);
+  }
+
+  // 루트 레벨 북마크 추가 (남은 북마크들)
+  while (bookmarkIndex < bookmarkCount) {
+    const url = sampleUrls[bookmarkIndex % sampleUrls.length];
+    const title = `Root Bookmark ${bookmarkIndex + 1}`;
+    html += `    <DT><A HREF="${url}" ADD_DATE="${Date.now()}" LAST_MODIFIED="${Date.now()}">${title}</A>\n`;
+    bookmarkIndex++;
+  }
+
+  html += `</DL><p>`;
+  return html;
+}
+
+interface TestFolder {
+  name: string;
+  bookmarkCount: number;
+  children: TestFolder[];
+}
+
+function generateFolderStructure(
+  folderNames: string[],
+  folderCount: number,
+  maxDepth: number
+): TestFolder[] {
+  const folders: TestFolder[] = [];
+  
+  for (let i = 0; i < Math.min(folderCount, folderNames.length); i++) {
+    const folder: TestFolder = {
+      name: folderNames[i],
+      bookmarkCount: Math.floor(Math.random() * 10) + 5, // 5-15개 북마크
+      children: []
+    };
+
+    // 하위 폴더 생성 (확률적으로)
+    if (maxDepth > 1 && Math.random() > 0.5) {
+      const childCount = Math.floor(Math.random() * 3) + 1; // 1-3개 하위 폴더
+      for (let j = 0; j < childCount && j < folderNames.length; j++) {
+        const childFolder: TestFolder = {
+          name: `${folderNames[i]} Sub ${j + 1}`,
+          bookmarkCount: Math.floor(Math.random() * 5) + 2, // 2-7개 북마크
+          children: []
+        };
+        folder.children.push(childFolder);
+      }
+    }
+
+    folders.push(folder);
+  }
+
+  return folders;
+}
+
+/**
+ * 테스트용 북마크 파일 다운로드
+ */
+export function downloadTestBookmarkFile(
+  bookmarkCount: number = 50,
+  folderCount: number = 10,
+  maxDepth: number = 3
+): void {
+  const html = generateTestBookmarkHTML(bookmarkCount, folderCount, maxDepth);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `test-bookmarks-${bookmarkCount}-bookmarks.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * 가져오기 성능 테스트
+ */
+export function logImportPerformance(
+  startTime: number,
+  endTime: number,
+  bookmarkCount: number,
+  folderCount: number,
+  errors: string[]
+): void {
+  const duration = endTime - startTime;
+  const bookmarksPerSecond = bookmarkCount / (duration / 1000);
+  
+  console.log('북마크 가져오기 성능 테스트 결과:', {
+    소요시간: `${Math.round(duration)}ms`,
+    북마크개수: bookmarkCount,
+    폴더개수: folderCount,
+    초당처리: `${bookmarksPerSecond.toFixed(2)}개/초`,
+    에러개수: errors.length,
+    성공률: `${((bookmarkCount - errors.length) / bookmarkCount * 100).toFixed(1)}%`
+  });
+}
