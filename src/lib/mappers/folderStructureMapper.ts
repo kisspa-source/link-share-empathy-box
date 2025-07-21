@@ -214,7 +214,7 @@ export class FolderStructureMapper {
   }
 
   /**
-   * 북마크 생성 요청 객체 생성
+   * 북마크 생성 요청 객체 생성 (개선된 버전)
    */
   private async createBookmarkRequest(bookmark: ImportedBookmark, folderPath: string): Promise<CreateBookmarkRequest | null> {
     // 중복 북마크 체크
@@ -230,20 +230,23 @@ export class FolderStructureMapper {
 
     const folderId = this.resolveFolderId(folderPath);
     
+    // 기본 이미지 URL 생성 (Edge Function 호출 대신 즉시 생성)
+    const defaultImageUrl = `https://image.thum.io/get/width/1200/crop/800/${encodeURIComponent(bookmark.url)}`;
+    
     return {
       title: bookmark.title || this.extractTitleFromUrl(bookmark.url),
       url: bookmark.url,
       description: bookmark.description || '',
       tags: await this.processTags(bookmark),
       folder_id: folderId,
-      image_url: undefined, // Edge Function에서 처리
+      image_url: defaultImageUrl, // 즉시 이미지 URL 생성
       favicon: bookmark.icon,
       addDate: bookmark.addDate ? new Date(bookmark.addDate * 1000) : new Date()
     };
   }
 
   /**
-   * 폴더 ID 해결
+   * 폴더 ID 해결 (개선된 버전)
    */
   private resolveFolderId(folderPath: string): string | undefined {
     if (!folderPath) {
@@ -254,6 +257,16 @@ export class FolderStructureMapper {
     const mappedFolderId = this.folderNameMap.get(folderPath);
     if (mappedFolderId) {
       return mappedFolderId;
+    }
+
+    // 폴더 경로에서 부모 폴더 찾기
+    if (folderPath.includes('/')) {
+      const parentPath = folderPath.split('/').slice(0, -1).join('/');
+      const parentId = this.folderNameMap.get(parentPath);
+      if (parentId) {
+        // 부모 폴더가 있으면 기본 폴더 대신 부모 폴더 사용
+        return parentId;
+      }
     }
 
     // 기본 폴더 사용

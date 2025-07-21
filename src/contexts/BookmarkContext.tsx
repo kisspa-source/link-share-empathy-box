@@ -370,13 +370,17 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
 
   // 북마크 변경 시 폴더 개수 업데이트는 이제 실시간으로 처리됩니다. // bookmarks 배열 전체가 아닌 length만 의존성으로 사용
 
-  // 메타데이터 가져오기 (Edge Functions 사용)
+  // 메타데이터 가져오기 (Edge Functions 사용) - 개선된 버전
   const fetchMetadata = async (url: string) => {
     try {
       console.log('🔍 Edge Function으로 메타데이터 추출 시작:', url);
       
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      
+      // 타임아웃 설정
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
       
       const response = await fetch(`${supabaseUrl}/functions/v1/save-bookmark`, {
         method: 'POST',
@@ -385,7 +389,10 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ url }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1323,13 +1330,29 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
               }
             }
 
+            // Edge Function으로 메타데이터 추출 (개선된 버전)
+            let imageUrl = bookmarkRequest.image_url;
+            let extractedMetadata = null;
+            
+            try {
+              console.log('🔍 Edge Function으로 메타데이터 추출 시작:', bookmarkRequest.url);
+              extractedMetadata = await fetchMetadata(bookmarkRequest.url);
+              
+              if (extractedMetadata && extractedMetadata.image_url) {
+                imageUrl = extractedMetadata.image_url;
+              }
+            } catch (metadataError) {
+              console.warn('⚠️ 메타데이터 추출 실패, 기본 이미지 사용:', metadataError);
+              // 기본 이미지 URL 유지
+            }
+
             // 북마크 생성 데이터 준비
             const bookmarkData = {
               user_id: user.id,
               url: bookmarkRequest.url,
-              title: bookmarkRequest.title,
-              description: bookmarkRequest.description || '',
-              image_url: bookmarkRequest.image_url || `https://image.thum.io/get/width/1200/crop/800/${encodeURIComponent(bookmarkRequest.url)}`,
+              title: extractedMetadata?.title || bookmarkRequest.title,
+              description: extractedMetadata?.description || bookmarkRequest.description || '',
+              image_url: imageUrl,
               folder_id: folderId,
               tags: bookmarkRequest.tags || [],
             };
@@ -1337,26 +1360,37 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
             // 북마크 저장
             const newBookmark = await bookmarkApi.create(bookmarkData);
             
-            // 북마크 상태 업데이트
-            setBookmarks(prev => [
-              ...prev,
-              {
-                id: newBookmark.id,
-                user_id: newBookmark.user_id,
-                url: newBookmark.url,
-                title: newBookmark.title,
-                description: newBookmark.description || '',
-                image_url: newBookmark.image_url,
-                thumbnail: newBookmark.image_url,
-                favicon: generateSafeFavicon(newBookmark.url.replace(/https?:\/\//, '').split('/')[0]),
-                category: 'Other' as Category,
-                tags: newBookmark.tags || [],
-                folder_id: newBookmark.folder_id,
-                created_at: newBookmark.created_at,
-                updated_at: newBookmark.updated_at,
-                saved_by: 1
+            // 북마크 상태 업데이트 후 폴더 개수 업데이트
+            setBookmarks(prev => {
+              const newBookmarks = [
+                ...prev,
+                {
+                  id: newBookmark.id,
+                  user_id: newBookmark.user_id,
+                  url: newBookmark.url,
+                  title: newBookmark.title,
+                  description: newBookmark.description || '',
+                  image_url: newBookmark.image_url,
+                  thumbnail: newBookmark.image_url,
+                  favicon: generateSafeFavicon(newBookmark.url.replace(/https?:\/\//, '').split('/')[0]),
+                  category: 'Other' as Category,
+                  tags: newBookmark.tags || [],
+                  folder_id: newBookmark.folder_id,
+                  created_at: newBookmark.created_at,
+                  updated_at: newBookmark.updated_at,
+                  saved_by: 1
+                }
+              ];
+
+              // 폴더별 북마크 개수 업데이트
+              if (newBookmark.folder_id) {
+                setFolders(prevFolders => 
+                  updateFolderCountInTree(prevFolders, newBookmark.folder_id!, 1)
+                );
               }
-            ]);
+
+              return newBookmarks;
+            });
 
             processed++;
             bookmarksImported++;
@@ -1486,6 +1520,23 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
       const completionMessage = `북마크 가져오기 완료! ${bookmarksImported}개의 북마크와 ${createdFolders.size}개의 폴더가 추가되었습니다.`;
       const duration = finalMetrics.duration ? Math.round(finalMetrics.duration / 1000) : 0;
       const hasErrors = errorsEncountered > 0 || mappingResult.errors.length > 0;
+
+      // 폴더 연결 상태 검증
+      const folderConnectionStats = folders.map(folder => ({
+        folderName: folder.name,
+        folderId: folder.id,
+        bookmarkCount: bookmarks.filter(b => b.folder_id === folder.id).length,
+        expectedCount: folder.bookmarkCount
+      }));
+
+      console.log('📊 폴더 연결 상태 검증:', folderConnectionStats);
+
+      // 연결되지 않은 북마크 확인
+      const unconnectedBookmarks = bookmarks.filter(b => !b.folder_id);
+      if (unconnectedBookmarks.length > 0) {
+        console.warn('⚠️ 폴더에 연결되지 않은 북마크:', unconnectedBookmarks.length);
+        mappingResult.errors.push(`${unconnectedBookmarks.length}개의 북마크가 폴더에 연결되지 않았습니다.`);
+      }
       
       if (hasErrors) {
         const errorSummary = `경고: ${errorsEncountered}개의 북마크 저장 실패, ${mappingResult.errors.length}개의 추가 오류 발생`;
