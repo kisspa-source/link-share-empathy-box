@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect, useCallback, useMemo } from "react";
 import Header from "./Header";
-import Sidebar from "./Sidebar";
+import { PreziSidebar } from "./PreziSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarToggle } from "@/hooks/useSidebarToggle";
 import { cn } from "@/lib/utils";
@@ -73,7 +73,7 @@ export default function Layout({ children, showSidebar = true }: LayoutProps) {
       
       <div className="flex flex-1">
         {isAuthenticated && showSidebar && (
-          <Sidebar 
+          <PreziSidebar 
             isMobileMenuOpen={isMobileMenuOpen}
             setIsMobileMenuOpen={setIsMobileMenuOpen}
           />
@@ -84,7 +84,7 @@ export default function Layout({ children, showSidebar = true }: LayoutProps) {
           isAuthenticated && showSidebar 
             ? isCollapsed 
               ? "md:ml-16" 
-              : "md:ml-64" 
+              : "md:ml-80" 
             : "",
           isAnimating && "will-change-transform"
         )}>

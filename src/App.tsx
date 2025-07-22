@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookmarkProvider } from "@/contexts/BookmarkContext";
 import { BookmarkViewProvider } from "@/contexts/BookmarkViewContext";
+import { SidebarNavigationProvider } from "@/contexts/SidebarNavigationContext";
 
 
 // Pages
@@ -35,9 +36,10 @@ const App = () => (
         <AuthProvider>
           <BookmarkProvider>
             <BookmarkViewProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
+              <SidebarNavigationProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />
@@ -57,6 +59,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
+              </SidebarNavigationProvider>
             </BookmarkViewProvider>
           </BookmarkProvider>
         </AuthProvider>

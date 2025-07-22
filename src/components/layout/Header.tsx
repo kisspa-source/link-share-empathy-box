@@ -15,6 +15,7 @@ import {
 import { Search, Plus, Moon, Sun, User, LogOut, Heart, Bookmark, Menu, Upload } from 'lucide-react';
 import AddBookmarkDialog from '@/components/bookmark/AddBookmarkDialog';
 import BookmarkUploadDialog from '@/components/bookmark/BookmarkUploadDialog';
+import { MobilePreziSidebarToggle } from './PreziSidebar';
 
 interface HeaderProps {
   isMobileMenuOpen?: boolean;
@@ -53,14 +54,10 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center px-4">
         {/* 모바일 사이드바 토글 버튼 */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="mr-2 md:hidden"
-          onClick={() => setIsMobileMenuOpen && setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        <MobilePreziSidebarToggle
+          isMobileMenuOpen={isMobileMenuOpen || false}
+          setIsMobileMenuOpen={setIsMobileMenuOpen || (() => {})}
+        />
 
         <Link to="/" className="mr-4 flex items-center space-x-2">
           <div className="w-8 h-8 bg-gradient-to-r from-linkbox-blue to-purple-600 rounded-lg flex items-center justify-center">
