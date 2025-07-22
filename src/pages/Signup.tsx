@@ -34,7 +34,7 @@ export default function Signup() {
 
     // Redirect if already logged in
     if (isAuthenticated) {
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -50,7 +50,7 @@ export default function Signup() {
       setIsSubmitting(true);
       await signup(email, password, nickname, () => {
         toast.success("회원가입이 완료되었습니다!");
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       });
     } catch (error: any) {
       toast.error(error.message || "회원가입 중 오류가 발생했습니다.");
@@ -81,7 +81,7 @@ export default function Signup() {
                 : "Google"
           } 로그인 성공!`,
         );
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       });
     } catch (error: any) {
       toast.error(

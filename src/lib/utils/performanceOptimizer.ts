@@ -36,40 +36,40 @@ export const getMemoryInfo = (): MemoryInfo | null => {
   return null;
 };
 
-// 적응형 배치 크기 계산
+// 적응형 배치 크기 계산 (개선된 버전)
 export const calculateOptimalBatchSize = (
   totalItems: number,
   itemComplexity: 'low' | 'medium' | 'high' = 'medium'
 ): number => {
   const memoryInfo = getMemoryInfo();
-  let baseBatchSize = 10;
+  let baseBatchSize = 20; // 기본 배치 크기 증가
   
   // 메모리 상태에 따른 배치 크기 조정
   if (memoryInfo) {
     switch (memoryInfo.memoryPressure) {
       case 'high':
-        baseBatchSize = 5;
+        baseBatchSize = 10;
         break;
       case 'medium':
-        baseBatchSize = 8;
+        baseBatchSize = 15;
         break;
       case 'low':
-        baseBatchSize = 15;
+        baseBatchSize = 30; // 메모리 여유 시 더 큰 배치
         break;
     }
   }
   
   // 아이템 복잡도에 따른 조정
   const complexityMultiplier = {
-    low: 1.5,
+    low: 2.0,    // 단순한 작업은 더 큰 배치
     medium: 1.0,
-    high: 0.7
+    high: 0.8    // 복잡한 작업은 작은 배치
   };
   
   const adjustedBatchSize = Math.floor(baseBatchSize * complexityMultiplier[itemComplexity]);
   
-  // 최소 1, 최대 50으로 제한
-  return Math.max(1, Math.min(50, adjustedBatchSize));
+  // 최소 5, 최대 100으로 제한 (더 큰 범위)
+  return Math.max(5, Math.min(100, adjustedBatchSize));
 };
 
 // 메모리 압박 상황에서 가비지 컬렉션 강제 실행

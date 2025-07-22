@@ -146,17 +146,25 @@ export const bookmarkApi = {
     }
   },
 
+
+
   // 북마크 수정
-  async update(id: string, updates: Partial<Bookmark>) {
-    const { data, error } = await supabase
-      .from('bookmarks')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data
+  async update(id: string, updates: Partial<BookmarkDB>) {
+    console.log('📝 북마크 업데이트:', id);
+    try {
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.error('❌ 북마크 업데이트 실패:', e);
+      throw e;
+    }
   },
 
   // 북마크 삭제

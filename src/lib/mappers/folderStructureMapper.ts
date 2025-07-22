@@ -25,6 +25,7 @@ export interface CreateBookmarkRequest {
   description?: string;
   tags?: string[];
   folder_id?: string;
+  folderPath?: string; // 폴더 경로 정보 추가
   image_url?: string;
   favicon?: string;
   addDate?: Date;
@@ -239,6 +240,7 @@ export class FolderStructureMapper {
       description: bookmark.description || '',
       tags: await this.processTags(bookmark),
       folder_id: folderId,
+      folderPath: folderPath, // 폴더 경로 정보 추가
       image_url: defaultImageUrl, // 즉시 이미지 URL 생성
       favicon: bookmark.icon,
       addDate: bookmark.addDate ? new Date(bookmark.addDate * 1000) : new Date()

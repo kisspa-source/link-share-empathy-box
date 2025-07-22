@@ -679,9 +679,19 @@ export default function BookmarkUploadDialog({ open, onOpenChange }: BookmarkUpl
                 )}
                 
                 {importProgress?.currentStep === 'completed' && (
-                  <p className="text-sm text-muted-foreground">
-                    북마크가 성공적으로 가져왔습니다. 이제 북마크 목록에서 확인할 수 있습니다.
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      북마크가 성공적으로 가져왔습니다. 이제 북마크 목록에서 확인할 수 있습니다.
+                    </p>
+                    <div className="bg-blue-50 p-3 rounded-lg space-y-2">
+                      <p className="text-xs text-blue-700">
+                        💡 <strong>팁:</strong> 가져온 폴더들이 사이드바에서 자동으로 펼쳐진 상태로 표시됩니다.
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        📁 폴더가 먼저 생성된 후, 각 폴더에 맞게 북마크가 연결되어 생성되었습니다.
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

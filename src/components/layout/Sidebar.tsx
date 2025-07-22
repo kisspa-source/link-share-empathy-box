@@ -113,7 +113,7 @@ interface SidebarProps {
 }
 
 const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen }: SidebarProps) {
-  const { folders, foldersTree, deleteFolder } = useBookmarks();
+  const { folders, foldersTree, deleteFolder, bookmarks } = useBookmarks();
   const location = useLocation();
   const [foldersExpanded, setFoldersExpanded] = useState(true);
   const { isCollapsed, toggle } = useSidebarToggle();
@@ -122,6 +122,30 @@ const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMen
   const [deletingFolder, setDeletingFolder] = useState<FolderType | null>(null);
   const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  
+  // 북마크 가져오기 완료 이벤트 처리 (개선된 버전)
+  useEffect(() => {
+    const handleImportCompleted = (event: CustomEvent) => {
+      if (event.detail?.expandedFolders) {
+        console.log('📁 사이드바 폴더 펼침 상태 업데이트:', event.detail.expandedFolders.length, '개 폴더');
+        setExpandedFolders(new Set(event.detail.expandedFolders));
+        
+        // 가져오기 완료 알림
+        if (event.detail.totalBookmarks && event.detail.totalFolders) {
+          console.log('✅ 북마크 가져오기 완료:', {
+            bookmarks: event.detail.totalBookmarks,
+            folders: event.detail.totalFolders
+          });
+        }
+      }
+    };
+
+    window.addEventListener('bookmarkImportCompleted', handleImportCompleted as EventListener);
+    
+    return () => {
+      window.removeEventListener('bookmarkImportCompleted', handleImportCompleted as EventListener);
+    };
+  }, []);
   
   // Function to determine if a link is active
   const isActive = (path: string) => {
@@ -314,7 +338,14 @@ const Sidebar = memo(function Sidebar({ isMobileMenuOpen = false, setIsMobileMen
           >
             <Link to="/">
               <Heart className={cn("h-5 w-5", isCollapsed && !isMobile ? "" : "mr-2")} />
-              {(!isCollapsed || isMobile) && "모든 북마크"}
+              {(!isCollapsed || isMobile) && (
+                <div className="flex items-center justify-between w-full">
+                  <span>모든 북마크</span>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    {bookmarks.length}
+                  </span>
+                </div>
+              )}
             </Link>
           </Button>
         </div>
