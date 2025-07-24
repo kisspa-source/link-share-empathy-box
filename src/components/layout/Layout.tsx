@@ -62,7 +62,11 @@ export default function Layout({ children, showSidebar = true }: LayoutProps) {
   }, [isCollapsed, isAuthenticated, showSidebar, debouncedResize]);
 
   return (
-    <div className="relative min-h-screen flex flex-col">
+    <div className={cn(
+      "relative flex flex-col",
+      // 데스크탑 모드에서 높이 최적화
+      "min-h-screen md:desktop-layout"
+    )}>
       {/* Header는 로그인된 사용자에게만 표시 */}
       {isAuthenticated && (
         <Header 
@@ -71,7 +75,7 @@ export default function Layout({ children, showSidebar = true }: LayoutProps) {
         />
       )}
       
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0">
         {isAuthenticated && showSidebar && (
           <PreziSidebar 
             isMobileMenuOpen={isMobileMenuOpen}
@@ -80,7 +84,9 @@ export default function Layout({ children, showSidebar = true }: LayoutProps) {
         )}
         
         <main className={cn(
-          "flex-1 min-h-screen transition-[margin] duration-300 ease-in-out",
+          "flex-1 transition-[margin] duration-300 ease-in-out",
+          // 데스크탑 모드에서 스크롤 최적화
+          "md:desktop-main-content",
           isAuthenticated && showSidebar 
             ? isCollapsed 
               ? "md:ml-16" 
@@ -90,6 +96,8 @@ export default function Layout({ children, showSidebar = true }: LayoutProps) {
         )}>
           <div className={cn(
             "mx-auto p-4 pb-16 transition-[max-width,padding] duration-300 ease-in-out",
+            // 데스크탑 모드에서 컨테이너 최적화
+            "md:desktop-container",
             containerClass,
             isAnimating && "will-change-layout"
           )}>

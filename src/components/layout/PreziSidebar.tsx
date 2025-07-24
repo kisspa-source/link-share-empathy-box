@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Menu, X } from 'lucide-react';
@@ -53,18 +53,6 @@ export const PreziSidebar = ({ isMobileMenuOpen = false, setIsMobileMenuOpen }: 
     onEscape: () => {
       if (isMobile && isMobileMenuOpen) {
         setIsMobileMenuOpen(false);
-      } else if (window.location.pathname !== '/') {
-        window.history.back();
-      }
-    },
-    onBackspace: () => {
-      if (window.location.pathname !== '/') {
-        window.history.back();
-      }
-    },
-    onArrowLeft: () => {
-      if (window.location.pathname !== '/') {
-        window.history.back();
       }
     },
     enabled: true
@@ -123,13 +111,11 @@ export const PreziSidebar = ({ isMobileMenuOpen = false, setIsMobileMenuOpen }: 
       )}
 
       {/* 사이드바 프레임 컨테이너 */}
-              <div ref={focusContainerRef} className="flex-1 overflow-hidden relative">
-          <div ref={sidebarRef} className="h-full">
-            <AnimatePresence mode="wait">
-              <SidebarFrame key={window.location.pathname} />
-            </AnimatePresence>
-          </div>
+      <div ref={focusContainerRef} className="flex-1 overflow-hidden relative">
+        <div ref={sidebarRef} className="h-full">
+          <SidebarFrame />
         </div>
+      </div>
     </>
   );
 
@@ -139,10 +125,16 @@ export const PreziSidebar = ({ isMobileMenuOpen = false, setIsMobileMenuOpen }: 
       {!isMobile && (
         <motion.aside
           className={cn(
-            "sidebar fixed inset-y-0 left-0 z-30 bg-background border-r",
+            "sidebar fixed inset-y-0 left-0 z-30 border-r",
             "flex flex-col h-screen pt-14",
             isCollapsed ? "w-16" : "w-80"
           )}
+          style={{
+            backgroundColor: 'white', // 라이트 모드
+            ...(document.documentElement.classList.contains('dark') && {
+              backgroundColor: '#020817' // 다크 모드 배경색
+            })
+          }}
           initial={{ width: isCollapsed ? 64 : 320 }}
           animate={{ width: isCollapsed ? 64 : 320 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
@@ -165,7 +157,13 @@ export const PreziSidebar = ({ isMobileMenuOpen = false, setIsMobileMenuOpen }: 
           
           {/* 사이드바 */}
           <motion.aside 
-            className="fixed inset-y-0 left-0 z-50 w-80 bg-background border-r flex flex-col h-screen pt-14 md:hidden"
+            className="fixed inset-y-0 left-0 z-50 w-80 border-r flex flex-col h-screen pt-14 md:hidden"
+            style={{
+              backgroundColor: 'white', // 라이트 모드
+              ...(document.documentElement.classList.contains('dark') && {
+                backgroundColor: '#020817' // 다크 모드 배경색
+              })
+            }}
             initial={{ x: -320 }}
             animate={{ x: 0 }}
             exit={{ x: -320 }}

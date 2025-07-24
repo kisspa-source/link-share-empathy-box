@@ -103,7 +103,7 @@ export default function CollectionsList() {
     <>
       {!session && <FloatingNav />}
       <Layout>
-        <div className={`space-y-6 ${!session ? 'pt-20' : ''}`}>
+        <div className={`space-y-6 md:desktop-content-area ${!session ? 'pt-20' : ''}`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">컬렉션</h1>

@@ -93,8 +93,27 @@
     @apply border-border;
   }
 
+  /* 데스크탑 모드에서 스크롤 방지를 위한 기본 설정 */
+  html, body {
+    height: 100%;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
+    /* 데스크탑에서 뷰포트 높이 정확히 설정 */
+    min-height: 100vh;
+    min-height: 100dvh; /* dynamic viewport height 지원 */
+  }
+
+  /* 루트 컨테이너 높이 설정 */
+  #root {
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -113,6 +132,41 @@
 
   .collection-card {
     @apply bg-card rounded-lg shadow-sm border overflow-hidden transition-all hover:shadow-md;
+  }
+
+  /* 데스크탑 레이아웃 최적화 */
+  .desktop-layout {
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .desktop-main-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* 스크롤바 스타일링 */
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+
+  .desktop-main-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .desktop-main-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .desktop-main-content::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  .desktop-main-content::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
   }
 }
 
@@ -262,6 +316,39 @@
 
   .interactive-hover:hover {
     transform: translateY(-4px) scale(1.02);
+  }
+
+  /* 데스크탑 모드 최적화 */
+  @media (min-width: 769px) {
+    /* 데스크탑에서 뷰포트 높이 정확히 설정 */
+    .desktop-vh-fix {
+      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    /* 데스크탑 컨테이너 최적화 */
+    .desktop-container {
+      max-width: 100%;
+      overflow: hidden;
+      /* 레이아웃 안정화 */
+      contain: layout style;
+    }
+
+    /* 데스크탑에서 스크롤 방지 */
+    .desktop-no-scroll {
+      overflow: hidden;
+    }
+
+    /* 데스크탑 메인 컨텐츠 영역 */
+    .desktop-content-area {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      height: calc(100vh - var(--header-height, 64px));
+      height: calc(100dvh - var(--header-height, 64px));
+    }
   }
 
   /* 모바일 최적화 */

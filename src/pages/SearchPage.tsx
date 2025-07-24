@@ -106,7 +106,7 @@ export default function SearchPage() {
 
   return (
     <Layout>
-      <div className="space-y-4">
+      <div className="space-y-4 md:desktop-content-area">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">검색</h1>

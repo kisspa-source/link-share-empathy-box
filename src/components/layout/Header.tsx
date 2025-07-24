@@ -51,7 +51,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" style={{ '--header-height': '56px' } as React.CSSProperties}>
       <div className="container flex h-14 items-center px-4">
         {/* 모바일 사이드바 토글 버튼 */}
         <MobilePreziSidebarToggle

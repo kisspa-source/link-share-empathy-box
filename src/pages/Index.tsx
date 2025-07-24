@@ -196,7 +196,7 @@ export default function Index() {
         <FloatingNav />
         <Layout showSidebar={false}>
           {/* Hero Section - New Gradient Design */}
-        <section className="relative flex flex-col items-center justify-center min-h-screen mobile-min-vh-screen text-center overflow-hidden mobile-keyboard-safe">
+        <section className="relative flex flex-col items-center justify-center min-h-screen md:desktop-vh-fix mobile-min-vh-screen text-center overflow-hidden mobile-keyboard-safe">
           {/* Animated Gradient Background */}
           <div className="absolute inset-0 bg-gradient-landing bg-400% animate-gradient-shift" />
           
@@ -679,7 +679,7 @@ export default function Index() {
 
   return (
     <Layout>
-      <div className="space-y-4">
+      <div className="space-y-4 md:desktop-content-area">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
