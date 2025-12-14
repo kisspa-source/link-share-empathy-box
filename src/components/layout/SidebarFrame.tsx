@@ -19,7 +19,7 @@ interface SidebarFrameProps {
 }
 
 export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
-  const { foldersTree, bookmarks } = useBookmarks();
+  const { foldersTree, bookmarks, collections } = useBookmarks();
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -310,7 +310,14 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
                         title={isCollapsed ? "컬렉션" : undefined}
                       >
                         <Share2 className={cn("h-5 w-5", !isCollapsed && "mr-2")} />
-                        {!isCollapsed && <span>컬렉션</span>}
+                        {!isCollapsed && (
+                          <>
+                            <span>컬렉션</span>
+                            <span className="text-xs text-muted-foreground ml-auto">
+                              {collections.length}
+                            </span>
+                          </>
+                        )}
                       </Button>
                     </div>
 
