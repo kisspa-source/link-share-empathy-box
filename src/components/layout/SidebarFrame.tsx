@@ -3,12 +3,15 @@ import { useBookmarks } from '@/contexts/BookmarkContext';
 import { useSidebarNavigation } from '@/contexts/SidebarNavigationContext';
 import { NavigationTitle } from './NavigationTitle';
 import { FolderItem } from './FolderItem';
+import { useSidebarToggle } from '@/hooks/useSidebarToggle';
 import { Button } from '@/components/ui/button';
 import { Heart, Tag, Share2, Plus } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CreateFolderDialog } from '@/components/folder/CreateFolderDialog';
+import { EditFolderDialog } from '@/components/folder/EditFolderDialog';
+import DeleteFolderDialog from '@/components/folder/DeleteFolderDialog';
 import { cn } from '@/lib/utils';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import type { Folder } from '@/types/bookmark';
 
 interface SidebarFrameProps {
@@ -33,8 +36,26 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
     updateLayerData
   } = useSidebarNavigation();
 
+  const { isCollapsed } = useSidebarToggle();
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
+
   // 현재 활성 레이어
   const currentLayer = layerStack[activeLayerIndex];
+
+  // 폴더 수정 핸들러
+  const handleEditFolder = (folder: Folder) => {
+    setEditingFolder(folder);
+  };
+
+  // 폴더 삭제 핸들러
+  const handleDeleteFolder = (folder: Folder) => {
+    setDeletingFolder(folder);
+  };
+  // ... (rest of file)
+  // Pass handlers to FolderItem
+  // Render dialogs at end
+
 
   // 폴더 ID로 폴더 찾기 (재귀)
   const findFolderById = (folders: Folder[], folderId: string): Folder | null => {
@@ -60,13 +81,15 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
   useEffect(() => {
     if (foldersTree && foldersTree.length > 0) {
       // 루트 레이어 업데이트
-      updateRootLayer(foldersTree);
-      
+      if (layerStack[0] && layerStack[0].folders !== foldersTree) {
+        updateRootLayer(foldersTree);
+      }
+
       // 각 레이어의 폴더 데이터 업데이트
       layerStack.forEach(layer => {
         if (layer.folderId) {
           const folder = findFolderById(foldersTree, layer.folderId);
-          if (folder && folder.children) {
+          if (folder && folder.children && layer.folders !== folder.children) {
             updateLayerData(layer.folderId, folder.children);
           }
         }
@@ -84,11 +107,11 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
       if (folder) {
         // 현재 레이어가 해당 폴더와 일치하는지 확인
         const currentLayerFolderId = currentLayer?.folderId;
-        
+
         if (currentLayerFolderId !== currentFolderId) {
           // 레이어 스택에서 해당 폴더를 찾아서 이동
           const targetLayerIndex = layerStack.findIndex(layer => layer.folderId === currentFolderId);
-          
+
           if (targetLayerIndex !== -1) {
             // 기존 레이어로 이동
             navigateToLayer(targetLayerIndex);
@@ -99,12 +122,12 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
         }
       }
     } else {
-      // 루트 페이지에 있는 경우
+      // 루트 페이지(또는 non-folder 페이지)에 있는 경우
       if (activeLayerIndex !== 0) {
-        navigateToLayer(0);
+        goToRoot();
       }
     }
-  }, [currentFolderId, foldersTree, currentLayer, layerStack, activeLayerIndex, navigateToFolder, navigateToLayer]);
+  }, [currentFolderId, foldersTree, currentLayer, layerStack, activeLayerIndex, navigateToFolder, navigateToLayer, goToRoot]);
 
   // 루트 레이어 데이터 업데이트
   useEffect(() => {
@@ -125,7 +148,7 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
       if (folder) {
         // 새 레이어로 이동
         navigateToFolder(folderId, folder, folder.children || []);
-        
+
         // URL도 업데이트
         navigate(`/folder/${folderId}`);
       }
@@ -137,7 +160,7 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
     return () => {
       if (activeLayerIndex > 0) {
         goBack();
-        
+
         // 이전 레이어의 URL로 이동
         const previousLayer = layerStack[activeLayerIndex - 1];
         if (previousLayer.folderId) {
@@ -162,15 +185,16 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
   };
 
   // 방향에 따른 애니메이션 설정
+  // 방향에 따른 애니메이션 설정
   const getAnimationProps = (layerIndex: number) => {
     const isActive = layerIndex === activeLayerIndex;
     const isVisible = layerIndex <= activeLayerIndex;
-    
+
     if (!isVisible) {
       return {
         initial: false,
         animate: false,
-        exit: false
+        exit: undefined
       };
     }
 
@@ -178,18 +202,18 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
       // 활성 레이어: 현재 방향에 따라 애니메이션
       if (animationDirection === 'forward') {
         return {
-          initial: { x: 320, opacity: 0 },
+          initial: { x: 256, opacity: 0 },
           animate: { x: 0, opacity: 1 },
-          exit: { x: -320, opacity: 0 },
-          transition: { duration: 0.3, ease: "easeInOut" },
+          exit: { x: -256, opacity: 0 },
+          transition: { duration: 0.3, ease: "easeInOut" as const },
           onAnimationComplete: handleAnimationComplete
         };
       } else {
         return {
-          initial: { x: -320, opacity: 0 },
+          initial: { x: -256, opacity: 0 },
           animate: { x: 0, opacity: 1 },
-          exit: { x: 320, opacity: 0 },
-          transition: { duration: 0.3, ease: "easeInOut" },
+          exit: { x: 256, opacity: 0 },
+          transition: { duration: 0.3, ease: "easeInOut" as const },
           onAnimationComplete: handleAnimationComplete
         };
       }
@@ -197,14 +221,14 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
       // 비활성 레이어: 고정 위치, 완전히 불투명
       return {
         initial: false,
-        animate: { 
-          x: 0, 
+        animate: {
+          x: 0,
           opacity: 1,
           scale: 1,
           filter: 'none'
         },
-        exit: false,
-        transition: { duration: 0.3, ease: "easeInOut" }
+        exit: undefined,
+        transition: { duration: 0.3, ease: "easeInOut" as const }
       };
     }
   };
@@ -216,7 +240,7 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
         {layerStack.map((layer, index) => {
           const isActive = index === activeLayerIndex;
           const isVisible = index <= activeLayerIndex;
-          
+
           if (!isVisible) return null;
 
           const depth = activeLayerIndex - index;
@@ -225,18 +249,13 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
             <motion.div
               key={layer.id}
               className={cn(
-                "absolute inset-0 flex flex-col",
+                "absolute inset-0 flex flex-col bg-background",
                 isActive ? "z-10" : "z-0"
               )}
               style={{
                 zIndex: isActive ? 10 : index,
-                backgroundColor: 'white', // 라이트 모드
                 opacity: 1,
                 transformOrigin: 'center center',
-                // 다크 모드 대응
-                ...(document.documentElement.classList.contains('dark') && {
-                  backgroundColor: '#020817' // 다크 모드 배경색
-                })
               }}
               {...getAnimationProps(index)}
             >
@@ -245,17 +264,12 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
                 title={layer.title}
                 showBackButton={index > 0}
                 onBack={handleBackClick}
+                isCollapsed={isCollapsed}
               />
 
               {/* 컨텐츠 영역 */}
-              <div 
-                className="flex-1 overflow-auto py-3 px-3"
-                style={{
-                  backgroundColor: 'white', // 라이트 모드
-                  ...(document.documentElement.classList.contains('dark') && {
-                    backgroundColor: '#020817' // 다크 모드 배경색
-                  })
-                }}
+              <div
+                className={cn("flex-1 overflow-auto py-3 bg-background", isCollapsed ? "px-1" : "px-3")}
               >
                 {index === 0 ? (
                   // 루트 레이어: 메인 메뉴 + 폴더들
@@ -264,39 +278,46 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
                     <div className="space-y-1">
                       <Button
                         variant="ghost"
-                        className="w-full justify-start"
+                        className={cn("w-full relative py-2 h-auto", isCollapsed ? "justify-center px-0" : "justify-start")}
                         onClick={() => handleMainMenuClick('/')}
+                        title={isCollapsed ? "모든 북마크" : undefined}
                       >
-                        <Heart className="h-5 w-5 mr-2" />
-                        <span>모든 북마크</span>
-                        <span className="text-xs text-muted-foreground ml-auto">
-                          {bookmarks.length}
-                        </span>
+                        <Heart className={cn("h-5 w-5", !isCollapsed && "mr-2")} />
+                        {!isCollapsed && (
+                          <>
+                            <span>모든 북마크</span>
+                            <span className="text-xs text-muted-foreground ml-auto">
+                              {bookmarks.length}
+                            </span>
+                          </>
+                        )}
                       </Button>
-                      
+
                       <Button
                         variant="ghost"
-                        className="w-full justify-start"
+                        className={cn("w-full relative py-2 h-auto", isCollapsed ? "justify-center px-0" : "justify-start")}
                         onClick={() => handleMainMenuClick('/tags')}
+                        title={isCollapsed ? "태그" : undefined}
                       >
-                        <Tag className="h-5 w-5 mr-2" />
-                        <span>태그</span>
+                        <Tag className={cn("h-5 w-5", !isCollapsed && "mr-2")} />
+                        {!isCollapsed && <span>태그</span>}
                       </Button>
-                      
+
                       <Button
                         variant="ghost"
-                        className="w-full justify-start"
+                        className={cn("w-full relative py-2 h-auto", isCollapsed ? "justify-center px-0" : "justify-start")}
                         onClick={() => handleMainMenuClick('/collections')}
+                        title={isCollapsed ? "컬렉션" : undefined}
                       >
-                        <Share2 className="h-5 w-5 mr-2" />
-                        <span>컬렉션</span>
+                        <Share2 className={cn("h-5 w-5", !isCollapsed && "mr-2")} />
+                        {!isCollapsed && <span>컬렉션</span>}
                       </Button>
                     </div>
 
                     {/* 폴더 섹션 */}
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between py-1 px-3">
-                        <span className="text-sm font-medium text-muted-foreground">폴더</span>
+                      <div className={cn("flex items-center py-1 px-3", isCollapsed ? "justify-center" : "justify-between")}>
+                        {!isCollapsed && <span className="text-sm font-medium text-muted-foreground">폴더</span>}
                         <CreateFolderDialog
                           trigger={
                             <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -305,7 +326,7 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
                           }
                         />
                       </div>
-                      
+
                       <div className="space-y-1">
                         {foldersTree.map((folder: Folder) => (
                           <FolderItem
@@ -313,6 +334,9 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
                             folder={folder}
                             onClick={() => handleFolderClick(folder.id)}
                             showCount={true}
+                            isCollapsed={isCollapsed}
+                            onEdit={handleEditFolder}
+                            onDelete={handleDeleteFolder}
                           />
                         ))}
                       </div>
@@ -330,18 +354,28 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
                             folder={folder}
                             onClick={() => handleFolderClick(folder.id)}
                             showCount={true}
+                            isCollapsed={isCollapsed}
+                            onEdit={handleEditFolder}
+                            onDelete={handleDeleteFolder}
                           />
                         ))}
                       </div>
                     ) : (
                       // 빈 폴더 상태
                       <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <div className="text-muted-foreground mb-2">
-                          이 폴더에 하위 폴더가 없습니다
-                        </div>
-                        <Button variant="outline" size="sm">
-                          폴더 추가
-                        </Button>
+                        {!isCollapsed && (
+                          <div className="text-muted-foreground mb-2">
+                            이 폴더에 하위 폴더가 없습니다
+                          </div>
+                        )}
+                        <CreateFolderDialog
+                          trigger={
+                            <Button variant="outline" size={isCollapsed ? "icon" : "sm"}>
+                              {isCollapsed ? <Plus className="h-4 w-4" /> : "폴더 추가"}
+                            </Button>
+                          }
+                          parentFolderId={layer.folderId}
+                        />
                       </div>
                     )}
                   </div>
@@ -351,6 +385,22 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
           );
         })}
       </div>
+
+      {/* 폴더 수정/삭제 다이얼로그 */}
+      {editingFolder && (
+        <EditFolderDialog
+          open={!!editingFolder}
+          onOpenChange={(open) => !open && setEditingFolder(null)}
+          folder={editingFolder}
+        />
+      )}
+      {deletingFolder && (
+        <DeleteFolderDialog
+          open={!!deletingFolder}
+          onOpenChange={(open) => !open && setDeletingFolder(null)}
+          folder={deletingFolder}
+        />
+      )}
     </div>
   );
 }; 

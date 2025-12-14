@@ -24,24 +24,24 @@ export default function CollectionView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
-  
+
   // 컬렉션 데이터 로드
   useEffect(() => {
     const loadCollection = async () => {
       if (!collectionId) return;
-      
+
       try {
         setIsLoading(true);
         setError(null);
         const data = await collectionApi.get(collectionId);
-        
+
         // 비로그인 상태에서는 공개 컬렉션만 접근 가능
         if (!user && !data.is_public) {
           setError("비공개 컬렉션입니다.");
           setCollection(null);
           return;
         }
-        
+
         // 로그인 상태에서는 본인 컬렉션만 접근 가능 (비공개 컬렉션의 경우)
         if (!data.is_public && user?.id !== data.user_id) {
           setError("접근 권한이 없는 컬렉션입니다.");
@@ -76,32 +76,32 @@ export default function CollectionView() {
   }, [collectionId, user]);
 
   useEffect(() => {
-    document.title = collection 
-      ? `${collection.name} | linku.me` 
+    document.title = collection
+      ? `${collection.name} | linku.me`
       : "컬렉션 | linku.me";
   }, [collection]);
-  
+
   const handleCopyShareUrl = () => {
     if (!collection?.isPublic) {
       toast.error("비공개 컬렉션은 공유할 수 없습니다");
       return;
     }
-    
+
     const shareUrl = `${window.location.origin}/c/${collection.id}`;
     navigator.clipboard.writeText(shareUrl);
     toast.success("공유 URL이 클립보드에 복사되었습니다");
   };
-  
+
   if (isLoading) {
     return (
       <>
         {!user && <FloatingNav />}
-        <Layout showSidebar={!!user}>
-          <div className={`flex flex-col items-center justify-center min-h-[60vh] ${!user ? 'pt-20' : ''}`}>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-            <p className="mt-4 text-muted-foreground">컬렉션을 불러오는 중...</p>
-          </div>
-        </Layout>
+
+        <div className={`flex flex-col items-center justify-center min-h-[60vh] ${!user ? 'pt-20' : ''}`}>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+          <p className="mt-4 text-muted-foreground">컬렉션을 불러오는 중...</p>
+        </div>
+
       </>
     );
   }
@@ -110,26 +110,26 @@ export default function CollectionView() {
     return (
       <>
         {!user && <FloatingNav />}
-        <Layout showSidebar={!!user}>
-          <div className={`flex flex-col items-center justify-center min-h-[60vh] ${!user ? 'pt-20' : ''}`}>
-            <h1 className="text-2xl font-bold mb-4">
-              {error || "컬렉션을 찾을 수 없습니다"}
-            </h1>
-            <p className="text-muted-foreground mb-8">
-              {!error && "요청한 컬렉션이 존재하지 않거나 접근 권한이 없습니다."}
-            </p>
-            <div className="flex gap-2">
-              <Button asChild>
-                <Link to="/collections">컬렉션 목록으로</Link>
+
+        <div className={`flex flex-col items-center justify-center min-h-[60vh] ${!user ? 'pt-20' : ''}`}>
+          <h1 className="text-2xl font-bold mb-4">
+            {error || "컬렉션을 찾을 수 없습니다"}
+          </h1>
+          <p className="text-muted-foreground mb-8">
+            {!error && "요청한 컬렉션이 존재하지 않거나 접근 권한이 없습니다."}
+          </p>
+          <div className="flex gap-2">
+            <Button asChild>
+              <Link to="/collections">컬렉션 목록으로</Link>
+            </Button>
+            {!user && (
+              <Button asChild variant="outline">
+                <Link to="/login">로그인</Link>
               </Button>
-              {!user && (
-                <Button asChild variant="outline">
-                  <Link to="/login">로그인</Link>
-                </Button>
-              )}
-            </div>
+            )}
           </div>
-        </Layout>
+        </div>
+
       </>
     );
   }
@@ -137,125 +137,125 @@ export default function CollectionView() {
   return (
     <>
       {!user && <FloatingNav />}
-      <Layout showSidebar={!!user}>
-        <div className={`space-y-6 ${!user ? 'pt-20' : ''}`}>
-          <div className="flex flex-col space-y-4">
-            {collection.coverImage && (
-              <div className="relative h-40 md:h-60 w-full overflow-hidden rounded-lg">
-                <img 
-                  src={collection.coverImage} 
-                  alt={collection.name} 
-                  className="w-full h-full object-cover" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-                
-                <div className="absolute bottom-0 left-0 p-4 text-white">
-                  <Badge 
-                    variant={collection.isPublic ? "default" : "outline"}
-                    className="mb-2"
-                  >
-                    {collection.isPublic ? (
-                      <Globe className="h-3 w-3 mr-1" />
-                    ) : (
-                      <Lock className="h-3 w-3 mr-1" />
-                    )}
-                    {collection.isPublic ? "공개" : "비공개"}
-                  </Badge>
+
+      <div className={`space-y-6 ${!user ? 'pt-20' : ''}`}>
+        <div className="flex flex-col space-y-4">
+          {collection.coverImage && (
+            <div className="relative h-40 md:h-60 w-full overflow-hidden rounded-lg">
+              <img
+                src={collection.coverImage}
+                alt={collection.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+
+              <div className="absolute bottom-0 left-0 p-4 text-white">
+                <Badge
+                  variant={collection.isPublic ? "default" : "outline"}
+                  className="mb-2"
+                >
+                  {collection.isPublic ? (
+                    <Globe className="h-3 w-3 mr-1" />
+                  ) : (
+                    <Lock className="h-3 w-3 mr-1" />
+                  )}
+                  {collection.isPublic ? "공개" : "비공개"}
+                </Badge>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">{collection.name}</h1>
+                <p className="text-muted-foreground">{collection.description}</p>
+
+                <div className="flex items-center mt-3">
+                  <Avatar className="h-6 w-6 mr-2">
+                    <AvatarImage src={collection.userAvatar} alt={collection.userNickname} />
+                    <AvatarFallback>{collection.userNickname[0]}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">
+                    {collection.userNickname} • {new Date(collection.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
-            )}
-            
-            <div>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">{collection.name}</h1>
-                  <p className="text-muted-foreground">{collection.description}</p>
-                  
-                  <div className="flex items-center mt-3">
-                    <Avatar className="h-6 w-6 mr-2">
-                      <AvatarImage src={collection.userAvatar} alt={collection.userNickname} />
-                      <AvatarFallback>{collection.userNickname[0]}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm">
-                      {collection.userNickname} • {new Date(collection.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  {/* 정렬 기준 선택 - 항상 표시 */}
-                  <BookmarkSortSelector />
-                  
-                  {/* 뷰 모드 선택 - 항상 표시 */}
-                  <BookmarkViewSelector dropdown />
-                  
-                  {/* 설정 패널 토글 버튼 */}
-                  <Button 
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
-                    className="h-10 w-10"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                  
-                  {/* 공유 버튼 */}
-                  <Button
-                    onClick={handleCopyShareUrl}
-                    disabled={!collection.isPublic}
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10"
-                    title="공유"
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                </div>
+
+              <div className="flex gap-2">
+                {/* 정렬 기준 선택 - 항상 표시 */}
+                <BookmarkSortSelector />
+
+                {/* 뷰 모드 선택 - 항상 표시 */}
+                <BookmarkViewSelector dropdown />
+
+                {/* 설정 패널 토글 버튼 */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
+                  className="h-10 w-10"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+
+                {/* 공유 버튼 */}
+                <Button
+                  onClick={handleCopyShareUrl}
+                  disabled={!collection.isPublic}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10"
+                  title="공유"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
-
-          {/* 설정 패널 */}
-          {isSettingsPanelOpen && (
-            <div className="relative">
-              {/* 오버레이 - 클릭 시 패널 닫기 */}
-              <div 
-                className="fixed inset-0 z-40 bg-black/20"
-                onClick={() => setIsSettingsPanelOpen(false)}
-              />
-              
-              <div className="absolute right-0 top-0 w-80 z-50">
-                <BookmarkViewSettingsPanel 
-                  onClose={() => setIsSettingsPanelOpen(false)}
-                  showCloseButton={true}
-                  className="bg-background border rounded-lg shadow-lg"
-                />
-              </div>
-            </div>
-          )}
-
-          <BookmarkGrid 
-            bookmarks={collection.bookmarks} 
-            emptyMessage="이 컬렉션에 북마크가 없습니다"
-          />
-          
-          {!user && collection.isPublic && (
-            <div className="mt-8 p-4 bg-muted rounded-lg text-center">
-              <p className="text-sm text-muted-foreground mb-3">
-                이 컬렉션이 마음에 드시나요? linku.me에 가입하여 나만의 북마크 컬렉션을 만들어보세요!
-              </p>
-              <div className="flex justify-center gap-2">
-                <Button asChild size="sm">
-                  <Link to="/signup">회원가입</Link>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/login">로그인</Link>
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
-      </Layout>
+
+        {/* 설정 패널 */}
+        {isSettingsPanelOpen && (
+          <div className="relative">
+            {/* 오버레이 - 클릭 시 패널 닫기 */}
+            <div
+              className="fixed inset-0 z-40 bg-black/20"
+              onClick={() => setIsSettingsPanelOpen(false)}
+            />
+
+            <div className="absolute right-0 top-0 w-80 z-50">
+              <BookmarkViewSettingsPanel
+                onClose={() => setIsSettingsPanelOpen(false)}
+                showCloseButton={true}
+                className="bg-background border rounded-lg shadow-lg"
+              />
+            </div>
+          </div>
+        )}
+
+        <BookmarkGrid
+          bookmarks={collection.bookmarks}
+          emptyMessage="이 컬렉션에 북마크가 없습니다"
+        />
+
+        {!user && collection.isPublic && (
+          <div className="mt-8 p-4 bg-muted rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-3">
+              이 컬렉션이 마음에 드시나요? linku.me에 가입하여 나만의 북마크 컬렉션을 만들어보세요!
+            </p>
+            <div className="flex justify-center gap-2">
+              <Button asChild size="sm">
+                <Link to="/signup">회원가입</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/login">로그인</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
     </>
   );
 }

@@ -22,6 +22,8 @@ interface SidebarNavigationState {
   animationDirection: 'forward' | 'backward';
   // 모바일 사이드바 상태
   isMobileOpen: boolean;
+  // 사이드바 접힘 상태
+  isCollapsed: boolean;
 }
 
 // 사이드바 탐색 액션 인터페이스
@@ -46,6 +48,8 @@ interface SidebarNavigationActions {
   updateLayerData: (folderId: string | null, newFolders: Folder[]) => void;
   // 루트 레이어 데이터 업데이트
   updateRootLayer: (folders: Folder[]) => void;
+  // 사이드바 토글 (접힘/펼침)
+  toggleSidebar: () => void;
 }
 
 // 컨텍스트 타입
@@ -75,7 +79,7 @@ export const SidebarNavigationProvider = ({ children }: { children: ReactNode })
     setLayerStack(prev => {
       // 현재 활성 레이어 이후의 레이어들 제거 (새로운 경로 시작)
       const newStack = prev.slice(0, activeLayerIndex + 1);
-      
+
       // 새 레이어 추가
       const newLayer: NavigationLayer = {
         id: `layer-${Date.now()}`,
@@ -84,10 +88,10 @@ export const SidebarNavigationProvider = ({ children }: { children: ReactNode })
         folders: childFolders,
         timestamp: Date.now()
       };
-      
+
       return [...newStack, newLayer];
     });
-    
+
     setActiveLayerIndex(prev => prev + 1);
     setAnimationDirection('forward');
     setIsAnimating(true);
@@ -127,9 +131,9 @@ export const SidebarNavigationProvider = ({ children }: { children: ReactNode })
 
   // 레이어 데이터 업데이트 (폴더 구조 변경 시)
   const updateLayerData = useCallback((folderId: string | null, newFolders: Folder[]) => {
-    setLayerStack(prev => 
-      prev.map(layer => 
-        layer.folderId === folderId 
+    setLayerStack(prev =>
+      prev.map(layer =>
+        layer.folderId === folderId
           ? { ...layer, folders: newFolders }
           : layer
       )
@@ -138,13 +142,31 @@ export const SidebarNavigationProvider = ({ children }: { children: ReactNode })
 
   // 루트 레이어 데이터 업데이트
   const updateRootLayer = useCallback((folders: Folder[]) => {
-    setLayerStack(prev => 
-      prev.map((layer, index) => 
-        index === 0 
+    setLayerStack(prev =>
+      prev.map((layer, index) =>
+        index === 0
           ? { ...layer, folders }
           : layer
       )
     );
+  }, []);
+
+  // 사이드바 접힘 상태 (localStorage와 연동)
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('sidebar-collapsed');
+      return stored ? JSON.parse(stored) : false;
+    }
+    return false;
+  });
+
+  // 사이드바 토글
+  const toggleSidebar = useCallback(() => {
+    setIsCollapsed(prev => {
+      const newValue = !prev;
+      localStorage.setItem('sidebar-collapsed', JSON.stringify(newValue));
+      return newValue;
+    });
   }, []);
 
   // 모바일 사이드바 토글
@@ -174,7 +196,8 @@ export const SidebarNavigationProvider = ({ children }: { children: ReactNode })
     isAnimating,
     animationDirection,
     isMobileOpen,
-    
+    isCollapsed,
+
     // 액션
     navigateToFolder,
     goBack,
@@ -186,6 +209,7 @@ export const SidebarNavigationProvider = ({ children }: { children: ReactNode })
     setAnimationDirection: setAnimationDirectionCallback,
     updateLayerData,
     updateRootLayer,
+    toggleSidebar,
   };
 
   return (

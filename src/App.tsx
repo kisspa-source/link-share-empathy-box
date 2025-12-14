@@ -11,6 +11,7 @@ import { SidebarNavigationProvider } from "@/contexts/SidebarNavigationContext";
 
 
 // Pages
+import AppLayout from "./components/layout/AppLayout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -40,25 +41,30 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/folder/:folderId" element={<FolderView />} />
-                  <Route path="/collections" element={<CollectionsList />} />
-                  <Route path="/collections/new" element={<CollectionCreate />} />
-                  <Route path="/collections/:collectionId" element={<CollectionView />} />
-                  <Route path="/c/:collectionId" element={<CollectionView />} />
-                  <Route path="/tags" element={<TagsList />} />
-                  <Route path="/tags/:tagId" element={<TagDetail />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/u/:userId" element={<UserProfile />} />
-                  <Route path="/search" element={<SearchPage />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
+                  <Routes>
+                    {/* Auth Routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+
+                    {/* App Routes with Persistent Layout */}
+                    <Route element={<AppLayout />}>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/folder/:folderId" element={<FolderView />} />
+                      <Route path="/collections" element={<CollectionsList />} />
+                      <Route path="/collections/new" element={<CollectionCreate />} />
+                      <Route path="/collections/:collectionId" element={<CollectionView />} />
+                      <Route path="/c/:collectionId" element={<CollectionView />} />
+                      <Route path="/tags" element={<TagsList />} />
+                      <Route path="/tags/:tagId" element={<TagDetail />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/u/:userId" element={<UserProfile />} />
+                      <Route path="/search" element={<SearchPage />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
+                  </Routes>
+                </BrowserRouter>
               </SidebarNavigationProvider>
             </BookmarkViewProvider>
           </BookmarkProvider>

@@ -42,24 +42,24 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastLoadTime, setLastLoadTime] = useState<number>(0);
   const fileRef = useRef<HTMLInputElement>(null);
-  
+
   // 비밀번호 변경 관련 상태
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isPwLoading, setIsPwLoading] = useState(false);
-  
+
   // 프로필 로드 함수
   const loadProfile = async () => {
     if (!user || isLoading) return;
-    
+
     // 마지막 로드 시간으로부터 1분이 지나지 않았다면 스킵
     const now = Date.now();
     if (now - lastLoadTime < 60000) {
       console.log('최근에 이미 프로필을 로드했습니다. 스킵합니다.');
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const { data: profile } = await supabase
@@ -67,7 +67,7 @@ export default function Profile() {
         .select('*')
         .eq('id', user.id)
         .single();
-      
+
       if (profile) {
         setNickname(profile.nickname || user.nickname || "");
         setUser({
@@ -111,18 +111,18 @@ export default function Profile() {
     try {
       // 1. profiles 테이블 업데이트
       const updated = await profileApi.update(user.id, { nickname });
-      
+
       // 2. auth.updateUser로 사용자 메타데이터 업데이트
-      await supabase.auth.updateUser({ 
-        data: { 
+      await supabase.auth.updateUser({
+        data: {
           nickname,
-          avatar_url: user.avatarUrl 
-        } 
+          avatar_url: user.avatarUrl
+        }
       });
 
       // 3. Context의 user 상태 업데이트
-      setUser({ 
-        ...user, 
+      setUser({
+        ...user,
         nickname: updated.nickname,
         avatarUrl: updated.avatar_url || user.avatarUrl
       });
@@ -154,7 +154,7 @@ export default function Profile() {
       toast.error('이미지 업로드 중 오류가 발생했습니다.');
     }
   };
-  
+
   // 비밀번호 변경 핸들러
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,7 +201,7 @@ export default function Profile() {
       setIsPwLoading(false);
     }
   };
-  
+
   const handleDeleteAccount = () => {
     if (window.confirm("정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
       toast.success("계정이 삭제되었습니다.");
@@ -219,168 +219,168 @@ export default function Profile() {
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">프로필 관리</h1>
-          <p className="text-muted-foreground">
-            계정 정보를 관리하고 프로필을 업데이트하세요
-          </p>
-        </div>
 
-        <div className="grid gap-6">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">프로필 관리</h1>
+        <p className="text-muted-foreground">
+          계정 정보를 관리하고 프로필을 업데이트하세요
+        </p>
+      </div>
+
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>프로필</CardTitle>
+            <CardDescription>
+              프로필 정보를 변경할 수 있습니다.
+              {isLoading && " (로딩 중...)"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdateProfile}>
+              <div className="grid gap-4">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage
+                      src={user.avatarUrl}
+                      alt={`${user.nickname}님의 프로필 이미지`}
+                    />
+                    <AvatarFallback>
+                      {user.nickname ? user.nickname[0].toUpperCase() : '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <Button type="button" variant="outline" onClick={handleAvatarButton}>
+                      이미지 변경
+                    </Button>
+                    {/* 로그인 방식 표시 */}
+                    {user.provider && (
+                      <div className="flex items-center gap-1 mt-2">
+                        {(() => {
+                          const config = providerConfig[user.provider as keyof typeof providerConfig] || {
+                            icon: Globe,
+                            label: `${user.provider} 계정으로 로그인`,
+                            color: "text-gray-500"
+                          };
+                          const Icon = config.icon;
+                          return (
+                            <>
+                              <Icon className={`h-4 w-4 ${config.color}`} />
+                              <span className="text-sm text-muted-foreground">
+                                {config.label}
+                              </span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileRef}
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="email">이메일</Label>
+                  <Input id="email" defaultValue={user.email} disabled />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="nickname">닉네임</Label>
+                  <Input
+                    id="nickname"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-4">
+                <Button type="submit">저장</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* 이메일 로그인 사용자에게만 비밀번호 변경 UI 표시 */}
+        {user.provider === 'email' && (
           <Card>
             <CardHeader>
-              <CardTitle>프로필</CardTitle>
+              <CardTitle>비밀번호 변경</CardTitle>
               <CardDescription>
-                프로필 정보를 변경할 수 있습니다.
-                {isLoading && " (로딩 중...)"}
+                계정의 비밀번호를 변경합니다.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleUpdateProfile}>
+              <form onSubmit={handleUpdatePassword}>
                 <div className="grid gap-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16">
-                      <AvatarImage 
-                        src={user.avatarUrl} 
-                        alt={`${user.nickname}님의 프로필 이미지`} 
-                      />
-                      <AvatarFallback>
-                        {user.nickname ? user.nickname[0].toUpperCase() : '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <Button type="button" variant="outline" onClick={handleAvatarButton}>
-                        이미지 변경
-                      </Button>
-                      {/* 로그인 방식 표시 */}
-                      {user.provider && (
-                        <div className="flex items-center gap-1 mt-2">
-                          {(() => {
-                            const config = providerConfig[user.provider as keyof typeof providerConfig] || {
-                              icon: Globe,
-                              label: `${user.provider} 계정으로 로그인`,
-                              color: "text-gray-500"
-                            };
-                            const Icon = config.icon;
-                            return (
-                              <>
-                                <Icon className={`h-4 w-4 ${config.color}`} />
-                                <span className="text-sm text-muted-foreground">
-                                  {config.label}
-                                </span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      ref={fileRef}
-                      onChange={handleAvatarChange}
-                      className="hidden"
-                    />
-                  </div>
-                  
                   <div className="grid gap-2">
-                    <Label htmlFor="email">이메일</Label>
-                    <Input id="email" defaultValue={user.email} disabled />
+                    <Label htmlFor="current-password">현재 비밀번호</Label>
+                    <Input id="current-password" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
                   </div>
-                  
                   <div className="grid gap-2">
-                    <Label htmlFor="nickname">닉네임</Label>
-                    <Input
-                      id="nickname"
-                      value={nickname}
-                      onChange={(e) => setNickname(e.target.value)}
-                    />
+                    <Label htmlFor="new-password">새 비밀번호</Label>
+                    <Input id="new-password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirm-password">비밀번호 확인</Label>
+                    <Input id="confirm-password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
                   </div>
                 </div>
-                
                 <div className="flex justify-end mt-4">
-                  <Button type="submit">저장</Button>
+                  <Button type="submit" disabled={isPwLoading}>{isPwLoading ? "변경 중..." : "비밀번호 변경"}</Button>
                 </div>
               </form>
             </CardContent>
           </Card>
-          
-          {/* 이메일 로그인 사용자에게만 비밀번호 변경 UI 표시 */}
-          {user.provider === 'email' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>비밀번호 변경</CardTitle>
-                <CardDescription>
-                  계정의 비밀번호를 변경합니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleUpdatePassword}>
-                  <div className="grid gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="current-password">현재 비밀번호</Label>
-                      <Input id="current-password" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="new-password">새 비밀번호</Label>
-                      <Input id="new-password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="confirm-password">비밀번호 확인</Label>
-                      <Input id="confirm-password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="flex justify-end mt-4">
-                    <Button type="submit" disabled={isPwLoading}>{isPwLoading ? "변경 중..." : "비밀번호 변경"}</Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* 개발자 도구 섹션 */}
-          {(isDevelopmentMode() || isLocalDevelopment()) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TestTube className="h-5 w-5" />
-                  개발자 도구
-                </CardTitle>
-                <CardDescription>
-                  북마크 가져오기 시스템의 성능을 테스트하고 분석할 수 있습니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TestPanel />
-              </CardContent>
-            </Card>
-          )}
-          
+        )}
+
+        {/* 개발자 도구 섹션 */}
+        {(isDevelopmentMode() || isLocalDevelopment()) && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-destructive">계정 삭제</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <TestTube className="h-5 w-5" />
+                개발자 도구
+              </CardTitle>
               <CardDescription>
-                계정과 관련된 모든 데이터가 영구적으로 삭제됩니다.
+                북마크 가져오기 시스템의 성능을 테스트하고 분석할 수 있습니다.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                계정을 삭제하면 모든 북마크, 컬렉션, 설정이 영구적으로 삭제되며 복구할 수 없습니다.
-              </p>
+              <TestPanel />
             </CardContent>
-            <CardFooter>
-              <Button 
-                variant="destructive" 
-                onClick={handleDeleteAccount}
-              >
-                계정 삭제
-              </Button>
-            </CardFooter>
           </Card>
-        </div>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-destructive">계정 삭제</CardTitle>
+            <CardDescription>
+              계정과 관련된 모든 데이터가 영구적으로 삭제됩니다.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              계정을 삭제하면 모든 북마크, 컬렉션, 설정이 영구적으로 삭제되며 복구할 수 없습니다.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+            >
+              계정 삭제
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
-    </Layout>
+    </div>
+
   );
 }

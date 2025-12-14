@@ -3,18 +3,25 @@ import { ChevronLeft, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarNavigation } from "@/contexts/SidebarNavigationContext";
 
+import { useNavigate } from "react-router-dom";
+
 interface NavigationTitleProps {
   title: string;
   showBackButton?: boolean;
   onBack?: () => void;
+  isCollapsed?: boolean;
 }
 
-export const NavigationTitle = ({ title, showBackButton = false, onBack }: NavigationTitleProps) => {
+export const NavigationTitle = ({ title, showBackButton = false, onBack, isCollapsed = false }: NavigationTitleProps) => {
   const { layerStack, activeLayerIndex, goToRoot } = useSidebarNavigation();
+  const navigate = useNavigate();
 
   return (
-    <div 
-      className="flex items-center justify-between p-4 border-b"
+    <div
+      className={cn(
+        "flex items-center border-b h-14", // Fixed height for consistency
+        isCollapsed ? "justify-center px-2" : "justify-between p-4"
+      )}
       style={{
         backgroundColor: 'white', // 라이트 모드
         ...(document.documentElement.classList.contains('dark') && {
@@ -22,7 +29,7 @@ export const NavigationTitle = ({ title, showBackButton = false, onBack }: Navig
         })
       }}
     >
-      <div className="flex items-center space-x-2">
+      <div className={cn("flex items-center", !isCollapsed && "space-x-2")}>
         {/* 뒤로가기 버튼 */}
         {showBackButton && onBack && (
           <Button
@@ -30,20 +37,23 @@ export const NavigationTitle = ({ title, showBackButton = false, onBack }: Navig
             size="icon"
             className="h-8 w-8"
             onClick={onBack}
-            title="뒤로가기"
+            title={isCollapsed ? "뒤로가기" : undefined}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
         )}
-        
+
         {/* 홈 버튼 (루트가 아닌 경우) */}
         {activeLayerIndex > 0 && (
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={goToRoot}
-            title="홈으로"
+            onClick={() => {
+              goToRoot();
+              navigate('/');
+            }}
+            title={isCollapsed ? "홈으로" : undefined}
           >
             <Home className="h-4 w-4" />
           </Button>
@@ -51,30 +61,34 @@ export const NavigationTitle = ({ title, showBackButton = false, onBack }: Navig
       </div>
 
       {/* 타이틀 */}
-      <div className="flex-1 text-center">
-        <h2 className="text-lg font-semibold truncate">{title}</h2>
-        
-        {/* 레이어 스택 표시 (2개 이상인 경우) */}
-        {layerStack.length > 1 && (
-          <div className="flex items-center justify-center space-x-1 mt-1">
-            {layerStack.slice(0, activeLayerIndex + 1).map((layer, index) => (
-              <div
-                key={layer.id}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-all duration-200",
-                  index === activeLayerIndex 
-                    ? "bg-primary" 
-                    : "bg-muted-foreground/30"
-                )}
-                title={layer.title}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {!isCollapsed && (
+        <>
+          <div className="flex-1 text-center">
+            <h2 className="text-lg font-semibold truncate">{title}</h2>
 
-      {/* 우측 여백 (균형을 위해) */}
-      <div className="w-16" />
+            {/* 레이어 스택 표시 (2개 이상인 경우) */}
+            {layerStack.length > 1 && (
+              <div className="flex items-center justify-center space-x-1 mt-1">
+                {layerStack.slice(0, activeLayerIndex + 1).map((layer, index) => (
+                  <div
+                    key={layer.id}
+                    className={cn(
+                      "w-2 h-2 rounded-full transition-all duration-200",
+                      index === activeLayerIndex
+                        ? "bg-primary"
+                        : "bg-muted-foreground/30"
+                    )}
+                    title={layer.title}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 우측 여백 (균형을 위해) */}
+          <div className="w-16" />
+        </>
+      )}
     </div>
   );
 }; 

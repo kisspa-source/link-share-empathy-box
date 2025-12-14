@@ -24,23 +24,24 @@ import { cn } from '@/lib/utils';
 interface CreateFolderDialogProps {
   trigger?: React.ReactNode;
   className?: string;
+  parentFolderId?: string;
 }
 
-export function CreateFolderDialog({ trigger, className }: CreateFolderDialogProps) {
+export function CreateFolderDialog({ trigger, className, parentFolderId }: CreateFolderDialogProps) {
   const [open, setOpen] = useState(false);
   const [isIconDialogOpen, setIsIconDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // 폴더 정보 상태
   const [folderName, setFolderName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('folder');
   const [selectedColor, setSelectedColor] = useState('#3B82F6');
   const [selectedCategory, setSelectedCategory] = useState('default');
-  const [selectedParentId, setSelectedParentId] = useState<string>('__root__');
-  
+  const [selectedParentId, setSelectedParentId] = useState<string>(parentFolderId || '__root__');
+
   const { addFolder, getFlatFolderList } = useBookmarks();
   const { user } = useAuth();
-  
+
   // 플랫한 폴더 목록 (부모 폴더 선택용)
   const flatFolders = getFlatFolderList();
 
@@ -49,7 +50,7 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
     setSelectedIcon('folder');
     setSelectedColor('#3B82F6');
     setSelectedCategory('default');
-    setSelectedParentId('__root__');
+    setSelectedParentId(parentFolderId || '__root__');
   };
 
   const handleIconSelect = (iconName: string, iconCategory: string) => {
@@ -71,13 +72,13 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
     setIsLoading(true);
     try {
       await addFolder(
-        folderName.trim(), 
-        selectedIcon, 
-        selectedColor, 
-        selectedCategory, 
+        folderName.trim(),
+        selectedIcon,
+        selectedColor,
+        selectedCategory,
         selectedParentId === '__root__' ? undefined : selectedParentId
       );
-      
+
       toast.success(`"${folderName}" 폴더가 생성되었습니다.`);
       setOpen(false);
       resetForm();
@@ -111,16 +112,16 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
             </Button>
           )}
         </DialogTrigger>
-        
+
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
-              <div 
+              <div
                 className="p-2 rounded-lg transition-colors"
                 style={{ backgroundColor: `${selectedColor}20` }}
               >
-                <IconComponent 
-                  className="w-5 h-5 transition-colors" 
+                <IconComponent
+                  className="w-5 h-5 transition-colors"
                   style={{ color: selectedColor }}
                 />
               </div>
@@ -132,7 +133,7 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
               </div>
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             {/* 폴더 이름 입력 */}
             <div className="space-y-2">
@@ -164,7 +165,7 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
             </div>
 
             <Separator />
-            
+
             {/* 부모 폴더 선택 */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">위치 선택</Label>
@@ -190,8 +191,8 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
                             const folderIconInfo = getSafeIconByName(folder.icon_name || 'folder');
                             const FolderIconComponent = folderIconInfo?.icon || Folder;
                             return (
-                              <FolderIconComponent 
-                                className="h-4 w-4 mr-2 inline" 
+                              <FolderIconComponent
+                                className="h-4 w-4 mr-2 inline"
                                 style={{ color: folder.icon_color || '#3B82F6' }}
                               />
                             );
@@ -209,7 +210,7 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
             </div>
 
             <Separator />
-            
+
             {/* 아이콘 및 색상 선택 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 아이콘 선택 */}
@@ -221,8 +222,8 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
                   className="w-full h-20 flex flex-col gap-2 hover:bg-accent/50 transition-colors"
                   onClick={() => setIsIconDialogOpen(true)}
                 >
-                  <IconComponent 
-                    className="w-7 h-7 transition-all" 
+                  <IconComponent
+                    className="w-7 h-7 transition-all"
                     style={{ color: selectedColor }}
                   />
                   <span className="text-xs text-muted-foreground">
@@ -230,7 +231,7 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
                   </span>
                 </Button>
               </div>
-              
+
               {/* 색상 선택 */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium">색상 선택</Label>
@@ -245,21 +246,21 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
             </div>
 
             <Separator />
-            
+
             {/* 미리보기 */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">미리보기</Label>
               <div className="relative overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/20 p-4 bg-gradient-to-br from-background to-muted/20">
                 <div className="flex items-center gap-4">
-                  <div 
+                  <div
                     className="p-3 rounded-xl shadow-sm transition-all duration-300"
-                    style={{ 
+                    style={{
                       backgroundColor: `${selectedColor}15`,
                       border: `2px solid ${selectedColor}30`
                     }}
                   >
-                    <IconComponent 
-                      className="w-8 h-8 transition-all duration-300" 
+                    <IconComponent
+                      className="w-8 h-8 transition-all duration-300"
                       style={{ color: selectedColor }}
                     />
                   </div>
@@ -282,19 +283,19 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
                       </div>
                     )}
                     <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <div 
-                        className="w-2 h-2 rounded-full" 
+                      <div
+                        className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: selectedColor }}
                       />
                       {selectedColor}
                     </div>
                   </div>
                 </div>
-                
+
                 {/* 배경 데코레이션 */}
                 <div className="absolute top-2 right-2 opacity-10">
-                  <IconComponent 
-                    className="w-12 h-12" 
+                  <IconComponent
+                    className="w-12 h-12"
                     style={{ color: selectedColor }}
                   />
                 </div>
@@ -303,15 +304,15 @@ export function CreateFolderDialog({ trigger, className }: CreateFolderDialogPro
           </div>
 
           <DialogFooter className="gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setOpen(false)}
               disabled={isLoading}
               className="flex-1 sm:flex-none"
             >
               취소
             </Button>
-            <Button 
+            <Button
               onClick={handleCreateFolder}
               disabled={isLoading || !folderName.trim()}
               className={cn(
