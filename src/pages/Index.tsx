@@ -238,7 +238,7 @@ export default function Index() {
         </section>
 
         {/* 2. Public Collections - Main Content (Visible on ALL devices) */}
-        <section className="py-8 sm:py-12 bg-muted/30 min-h-[600px]">
+        <section id="public-collections" className="py-8 sm:py-12 bg-muted/30 min-h-[600px]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
@@ -313,7 +313,7 @@ export default function Index() {
         </section>
 
         {/* 3. Compact Features Section (Trust/Value) */}
-        <section className="py-12 border-t bg-card">
+        <section id="features" className="py-12 border-t bg-card">
           <div className="max-w-5xl mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
               <div className="space-y-2">
