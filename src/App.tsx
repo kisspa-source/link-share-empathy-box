@@ -27,6 +27,7 @@ import UserProfile from "./pages/UserProfile";
 import SearchPage from "./pages/SearchPage";
 import NotFound from "./pages/NotFound";
 import CollectionCreate from "./pages/CollectionCreate";
+import Features from "./pages/Features";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/features" element={<Features />} />
 
                     {/* App Routes with Persistent Layout */}
                     <Route element={<AppLayout />}>

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { 
-  Menu, 
-  X, 
-  LogIn, 
+import {
+  Menu,
+  X,
+  LogIn,
   UserPlus,
   Sparkles,
   Moon,
@@ -22,6 +22,8 @@ export default function FloatingNav() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,17 +35,21 @@ export default function FloatingNav() {
   }, []);
 
   const navItems = [
-    { href: '#public-collections', label: '인기 컬렉션', icon: Globe },
-    { href: '#features', label: '기능', icon: Sparkles },
+    { href: '/collections', label: '인기 컬렉션', icon: Globe },
+    { href: '/features', label: '기능', icon: Sparkles },
   ];
 
-  const scrollToSection = (sectionId: string) => {
-    const element = document.querySelector(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+  const handleNavigation = (href: string) => {
+    if (href.startsWith('#')) {
+      const element = document.querySelector(href);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      } else if (location.pathname !== '/') {
+        // If on another page and clicking a hash link, go to home then hash
+        navigate(`/${href}`);
+      }
     } else {
-      // 현재 페이지에 해당 섹션이 없으면 메인 페이지로 이동
-      window.location.href = `/${sectionId}`;
+      navigate(href);
     }
     setIsMobileMenuOpen(false);
   };
@@ -65,15 +71,15 @@ export default function FloatingNav() {
           <div className="flex items-center justify-between h-16 sm:h-14">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group">
-              <motion.div 
+              <motion.div
                 className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-linkbox-blue to-purple-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300"
                 whileHover={{ scale: isMobile ? 1.05 : 1.1 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <Bookmark className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </motion.div>
-              <span className="font-bold text-lg sm:text-xl text-foreground drop-shadow-sm group-hover:text-primary transition-colors duration-300">
-                {isMobile ? 'linku.me' : 'linku.me'}
+              <span className="font-bold text-lg sm:text-xl text-foreground drop-shadow-sm group-hover:text-primary transition-colors duration-300 tracking-tight">
+                Linku<span className="text-blue-600">.me</span>
               </span>
             </Link>
 
@@ -82,7 +88,7 @@ export default function FloatingNav() {
               {navItems.map((item) => (
                 <motion.button
                   key={item.href}
-                  onClick={() => scrollToSection(item.href)}
+                  onClick={() => handleNavigation(item.href)}
                   className="text-sm font-medium text-foreground/90 hover:text-primary transition-colors duration-300 drop-shadow-sm whitespace-nowrap"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -90,12 +96,12 @@ export default function FloatingNav() {
                   {item.label}
                 </motion.button>
               ))}
-              
+
               <div className="flex items-center space-x-2 lg:space-x-3">
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={toggleTheme}
                     className="backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 shadow-sm p-2"
                   >
@@ -103,9 +109,9 @@ export default function FloatingNav() {
                   </Button>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     asChild
                     className="backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 shadow-sm hidden lg:flex"
                   >
@@ -116,8 +122,8 @@ export default function FloatingNav() {
                   </Button>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     asChild
                     className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300"
                   >
@@ -172,7 +178,7 @@ export default function FloatingNav() {
               {navItems.map((item, index) => (
                 <motion.button
                   key={item.href}
-                  onClick={() => scrollToSection(item.href)}
+                  onClick={() => handleNavigation(item.href)}
                   className="flex items-center space-x-5 w-full p-6 text-left hover:bg-accent/50 rounded-xl transition-all duration-300 min-h-[70px] active:bg-accent/70"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -185,7 +191,7 @@ export default function FloatingNav() {
                   <span className="font-medium text-xl">{item.label}</span>
                 </motion.button>
               ))}
-              
+
               <div className="border-t border-border/50 pt-8 space-y-6">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -193,9 +199,9 @@ export default function FloatingNav() {
                   transition={{ duration: 0.3, delay: 0.2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 h-16 text-xl" 
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 h-16 text-xl"
                     onClick={toggleTheme}
                   >
                     <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 mr-4">
@@ -204,16 +210,16 @@ export default function FloatingNav() {
                     {theme === 'dark' ? '라이트 모드' : '다크 모드'}
                   </Button>
                 </motion.div>
-                
+
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.3 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 h-16 text-xl" 
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start backdrop-blur-sm bg-background/20 hover:bg-background/40 border border-border/30 h-16 text-xl"
                     asChild
                   >
                     <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
@@ -224,15 +230,15 @@ export default function FloatingNav() {
                     </Link>
                   </Button>
                 </motion.div>
-                
+
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.4 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Button 
-                    className="w-full justify-start bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-16 text-xl font-semibold" 
+                  <Button
+                    className="w-full justify-start bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-16 text-xl font-semibold"
                     asChild
                   >
                     <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>

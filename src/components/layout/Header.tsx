@@ -5,7 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,7 +29,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // 🔥 BUG FIX: 현재 위치한 폴더 ID를 파악하여 북마크 추가 시 자동 지정
   const getCurrentFolderId = (): string | undefined => {
     // URL 패턴: /folder/{folderId}
@@ -39,7 +39,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
     }
     return undefined;
   };
-  
+
   // 간단한 로그아웃 핸들러
   const handleLogout = async () => {
     setIsAddBookmarkOpen(false);
@@ -56,18 +56,18 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
         {/* 모바일 사이드바 토글 버튼 */}
         <MobilePreziSidebarToggle
           isMobileMenuOpen={isMobileMenuOpen || false}
-          setIsMobileMenuOpen={setIsMobileMenuOpen || (() => {})}
+          setIsMobileMenuOpen={setIsMobileMenuOpen || (() => { })}
         />
 
         <Link to="/" className="mr-4 flex items-center space-x-2">
           <div className="w-8 h-8 bg-gradient-to-r from-linkbox-blue to-purple-600 rounded-lg flex items-center justify-center">
             <Bookmark className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-lg">
-            linku.me
+          <span className="font-bold text-xl tracking-tight">
+            Linku<span className="text-blue-600">.me</span>
           </span>
         </Link>
-        
+
         <div className="flex flex-1 items-center justify-end space-x-2">
           <Button variant="outline" size="icon" className="mr-2" onClick={toggleTheme}>
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -75,8 +75,8 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
 
           {user ? (
             <>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="icon"
                 className="mr-2"
                 asChild
@@ -86,19 +86,19 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
                 </Link>
               </Button>
 
-              <Button 
-                variant="default" 
-                size="sm" 
+              <Button
+                variant="default"
+                size="sm"
                 onClick={() => setIsAddBookmarkOpen(true)}
                 className="mr-2 hidden sm:flex"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 북마크 추가
               </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
+
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setIsUploadOpen(true)}
                 className="mr-2 hidden sm:flex"
                 title="북마크 가져오기"
@@ -106,26 +106,26 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
                 <Upload className="h-4 w-4 mr-2" />
                 가져오기
               </Button>
-              
-              <Button 
-                variant="default" 
-                size="icon" 
+
+              <Button
+                variant="default"
+                size="icon"
                 onClick={() => setIsAddBookmarkOpen(true)}
                 className="mr-2 sm:hidden"
               >
                 <Plus className="h-5 w-5" />
               </Button>
-              
-              <Button 
-                variant="outline" 
-                size="icon" 
+
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => setIsUploadOpen(true)}
                 className="mr-2 sm:hidden"
                 title="북마크 가져오기"
               >
                 <Upload className="h-5 w-5" />
               </Button>
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className="h-8 w-8 cursor-pointer">
@@ -178,15 +178,15 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
         </div>
       </div>
       {/* 🔥 BUG FIX: 현재 폴더 ID를 전달하여 북마크 추가 시 자동 지정 */}
-      <AddBookmarkDialog 
-        open={isAddBookmarkOpen} 
+      <AddBookmarkDialog
+        open={isAddBookmarkOpen}
         onOpenChange={setIsAddBookmarkOpen}
         defaultFolderId={getCurrentFolderId()}
       />
-      
+
       {/* 북마크 업로드 다이얼로그 */}
-      <BookmarkUploadDialog 
-        open={isUploadOpen} 
+      <BookmarkUploadDialog
+        open={isUploadOpen}
         onOpenChange={setIsUploadOpen}
       />
     </header>
