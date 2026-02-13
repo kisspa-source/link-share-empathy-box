@@ -51,7 +51,9 @@ export const useKeyboardNavigation = ({
 
         case 'ArrowLeft':
           event.preventDefault();
-          if (onArrowLeft) {
+          if (event.altKey && activeLayerIndex > 0) {
+            goBack();
+          } else if (onArrowLeft) {
             onArrowLeft();
           } else if (activeLayerIndex > 0) {
             goBack();
@@ -74,15 +76,6 @@ export const useKeyboardNavigation = ({
           }
           break;
 
-        // 브라우저 뒤로가기 단축키 (Alt + Left Arrow)
-        case 'ArrowLeft':
-          if (event.altKey) {
-            event.preventDefault();
-            if (activeLayerIndex > 0) {
-              goBack();
-            }
-          }
-          break;
       }
     };
 

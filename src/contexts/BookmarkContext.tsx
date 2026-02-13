@@ -1374,7 +1374,7 @@ export const BookmarkProvider = ({ children }: { children: ReactNode }) => {
             }
 
             // 메타데이터 추출 최적화 - 병렬 처리로 시간 단축
-            let imageUrl = bookmarkRequest.image_url;
+            const imageUrl = bookmarkRequest.image_url;
             let extractedMetadata = null;
             
             // 메타데이터 추출을 백그라운드에서 실행 (비동기)

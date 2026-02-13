@@ -514,22 +514,21 @@ export default function BookmarkGrid({
       let comparison = 0;
       
       switch (sortBy) {
-        case 'date':
+        case 'date': {
           const dateA = new Date(a.created_at).getTime();
           const dateB = new Date(b.created_at).getTime();
           comparison = dateA - dateB;
           break;
-          
+        }
         case 'title':
           comparison = a.title.toLowerCase().localeCompare(b.title.toLowerCase());
           break;
-          
-        case 'site':
+        case 'site': {
           const siteA = getDomainFromUrl(a.url);
           const siteB = getDomainFromUrl(b.url);
           comparison = siteA.localeCompare(siteB);
           break;
-          
+        }
         default:
           comparison = 0;
       }
@@ -767,4 +766,3 @@ export default function BookmarkGrid({
     </>
   );
 }
-

@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       // 기본 사용자 정보 (user_metadata 기반)
-      let newUser: User = {
+      const newUser: User = {
         id: userData.id,
         email: userData.email || '',
         nickname: userData.user_metadata?.name ||

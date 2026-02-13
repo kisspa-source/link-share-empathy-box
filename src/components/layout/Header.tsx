@@ -33,7 +33,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
   // 🔥 BUG FIX: 현재 위치한 폴더 ID를 파악하여 북마크 추가 시 자동 지정
   const getCurrentFolderId = (): string | undefined => {
     // URL 패턴: /folder/{folderId}
-    const folderMatch = location.pathname.match(/^\/folder\/([^\/]+)$/);
+    const folderMatch = location.pathname.match(/^\/folder\/([^/]+)$/);
     if (folderMatch) {
       return folderMatch[1];
     }

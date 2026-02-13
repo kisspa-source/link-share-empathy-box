@@ -190,7 +190,7 @@ export class HTMLBookmarkParserLegacy implements BookmarkParser {
   }
 
   private countBookmarks(result: ParsedBookmarkFile): number {
-    let count = result.bookmarks.length;
+    const count = result.bookmarks.length;
     
     const countInFolders = (folders: ImportedFolder[]): number => {
       return folders.reduce((acc, folder) => {
@@ -345,7 +345,7 @@ export class JSONBookmarkParser implements BookmarkParser {
 
   private countBookmarks(result: ParsedBookmarkFile): number {
     // HTMLBookmarkParser와 동일한 로직
-    let count = result.bookmarks.length;
+    const count = result.bookmarks.length;
     
     const countInFolders = (folders: ImportedFolder[]): number => {
       return folders.reduce((acc, folder) => {

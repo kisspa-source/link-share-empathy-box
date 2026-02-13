@@ -46,9 +46,11 @@ export default function Index() {
           elements.forEach(el => {
             if (el instanceof HTMLElement) {
               // 스타일 재계산 강제 실행
-              el.style.transform = el.style.transform;
+              const previousTransform = el.style.transform;
+              el.style.transform = 'translateZ(0)';
               // 리플로우 강제 실행
-              el.offsetHeight;
+              void el.offsetHeight;
+              el.style.transform = previousTransform;
             }
           });
 
@@ -76,7 +78,7 @@ export default function Index() {
         const containers = document.querySelectorAll('.mobile-container');
         containers.forEach(container => {
           if (container instanceof HTMLElement) {
-            container.offsetHeight; // 리플로우 강제 실행
+            void container.offsetHeight; // 리플로우 강제 실행
           }
         });
       }, 150); // 디바운싱 150ms

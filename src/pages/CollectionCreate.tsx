@@ -54,10 +54,13 @@ export default function CollectionCreate() {
       if (linkError) throw linkError;
 
       toast.success("컬렉션이 생성되었습니다!");
-      refreshData && refreshData();
+      if (refreshData) {
+        refreshData();
+      }
       navigate(`/collections/${collection.id}`);
-    } catch (err: any) {
-      toast.error(err.message || "컬렉션 생성 중 오류가 발생했습니다.");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "컬렉션 생성 중 오류가 발생했습니다.";
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

@@ -40,7 +40,7 @@ export default function TagsList() {
 
   // Filter and sort tags
   const filteredAndSortedTags = useMemo(() => {
-    let filtered = tagCounts.filter(tag =>
+    const filtered = tagCounts.filter(tag =>
       tag.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 

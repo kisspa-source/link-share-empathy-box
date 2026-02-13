@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSidebarNavigation } from '@/contexts/SidebarNavigationContext';
 import { useBookmarks } from '@/contexts/BookmarkContext';
+import type { Folder } from '@/types/bookmark';
 
 export const useURLSync = () => {
   const location = useLocation();
@@ -12,7 +13,7 @@ export const useURLSync = () => {
   // URL에서 폴더 경로 추출
   const getFolderPathFromURL = useCallback((pathname: string): string[] => {
     // /folder/{folderId} 패턴 매칭
-    const folderMatch = pathname.match(/^\/folder\/([^\/]+)$/);
+    const folderMatch = pathname.match(/^\/folder\/([^/]+)$/);
     if (folderMatch) {
       const folderId = folderMatch[1];
       return [folderId];
@@ -21,7 +22,7 @@ export const useURLSync = () => {
   }, []);
 
   // 폴더 ID로 폴더 찾기 (재귀)
-  const findFolderById = useCallback((folders: any[], folderId: string): any => {
+  const findFolderById = useCallback((folders: Folder[], folderId: string): Folder | null => {
     for (const folder of folders) {
       if (folder.id === folderId) {
         return folder;
@@ -38,7 +39,7 @@ export const useURLSync = () => {
   const getFolderPath = useCallback((folderId: string): string[] => {
     const path: string[] = [];
     
-    const findPath = (folders: any[], targetId: string, currentPath: string[] = []): boolean => {
+    const findPath = (folders: Folder[], targetId: string, currentPath: string[] = []): boolean => {
       for (const folder of folders) {
         const newPath = [...currentPath, folder.id];
         

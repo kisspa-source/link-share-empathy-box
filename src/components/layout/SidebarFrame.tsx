@@ -73,7 +73,7 @@ export const SidebarFrame = ({ frameKey }: SidebarFrameProps) => {
 
   // URL에서 폴더 ID 추출
   const currentFolderId = useMemo(() => {
-    const urlMatch = location.pathname.match(/^\/folder\/([^\/]+)$/);
+    const urlMatch = location.pathname.match(/^\/folder\/([^/]+)$/);
     return urlMatch ? urlMatch[1] : null;
   }, [location.pathname]);
 
