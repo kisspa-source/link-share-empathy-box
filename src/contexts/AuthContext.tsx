@@ -355,8 +355,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signInWithOAuth = async (provider: 'google' | 'kakao' | 'github', onSuccess?: () => void) => {
     try {
       setIsLoading(true);
-      
-      console.log('Current Redirect URL:', import.meta.env.VITE_AUTH_REDIRECT_TO);
+
+      const redirectTo = import.meta.env.VITE_AUTH_REDIRECT_TO || `${window.location.origin}/auth/callback`;
+      console.log('Current Redirect URL:', redirectTo);
 
       // 리다이렉트 후 돌아올 경로 저장
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
@@ -364,7 +365,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: import.meta.env.VITE_AUTH_REDIRECT_TO,
+          redirectTo,
         },
       });
       
