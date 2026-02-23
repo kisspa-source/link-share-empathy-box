@@ -52,24 +52,24 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" style={{ '--header-height': '56px' } as React.CSSProperties}>
-      <div className="container flex h-14 items-center px-4">
+      <div className="container flex h-14 items-center gap-1 px-2 sm:px-4">
         {/* 모바일 사이드바 토글 버튼 */}
         <MobilePreziSidebarToggle
           isMobileMenuOpen={isMobileMenuOpen || false}
           setIsMobileMenuOpen={setIsMobileMenuOpen || (() => { })}
         />
 
-        <Link to="/" className="mr-4 flex items-center space-x-2">
+        <Link to="/" className="mr-1 flex min-w-0 items-center space-x-2 sm:mr-4">
           <div className="w-8 h-8 bg-gradient-to-r from-linkbox-blue to-purple-600 rounded-lg flex items-center justify-center">
             <Bookmark className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-xl tracking-tight">
+          <span className="hidden font-bold text-xl tracking-tight min-[430px]:inline">
             Linku<span className="text-blue-600">.me</span>
           </span>
         </Link>
 
-        <div className="flex flex-1 items-center justify-end space-x-2">
-          <Button variant="outline" size="icon" className="mr-2" onClick={toggleTheme}>
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 sm:h-10 sm:w-10" onClick={toggleTheme}>
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
 
@@ -78,7 +78,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
               <Button
                 variant="ghost"
                 size="icon"
-                className="mr-2"
+                className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
                 asChild
               >
                 <Link to="/search">
@@ -90,7 +90,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
                 variant="default"
                 size="sm"
                 onClick={() => setIsAddBookmarkOpen(true)}
-                className="mr-2 hidden sm:flex"
+                className="hidden shrink-0 sm:flex"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 북마크 추가
@@ -100,7 +100,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
                 variant="outline"
                 size="sm"
                 onClick={() => setIsUploadOpen(true)}
-                className="mr-2 hidden sm:flex"
+                className="hidden shrink-0 sm:flex"
                 title="북마크 가져오기"
               >
                 <Upload className="h-4 w-4 mr-2" />
@@ -111,7 +111,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
                 variant="default"
                 size="icon"
                 onClick={() => setIsAddBookmarkOpen(true)}
-                className="mr-2 sm:hidden"
+                className="h-9 w-9 shrink-0 sm:hidden sm:h-10 sm:w-10"
               >
                 <Plus className="h-5 w-5" />
               </Button>
@@ -120,7 +120,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
                 variant="outline"
                 size="icon"
                 onClick={() => setIsUploadOpen(true)}
-                className="mr-2 sm:hidden"
+                className="h-9 w-9 shrink-0 sm:hidden sm:h-10 sm:w-10"
                 title="북마크 가져오기"
               >
                 <Upload className="h-5 w-5" />
@@ -128,7 +128,7 @@ export default function Header({ isMobileMenuOpen, setIsMobileMenuOpen }: Header
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Avatar className="h-8 w-8 cursor-pointer">
+                  <Avatar className="h-8 w-8 shrink-0 cursor-pointer">
                     <AvatarImage src={user.avatarUrl} alt={user.nickname} />
                     <AvatarFallback>{user.nickname[0]}</AvatarFallback>
                   </Avatar>
