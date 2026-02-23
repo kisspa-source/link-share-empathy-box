@@ -66,11 +66,11 @@ export default function AddBookmarkDialog({ open, onOpenChange, defaultFolderId 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="flex w-[calc(100vw-1.5rem)] max-w-md max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden p-0 sm:max-h-[90dvh]">
         <DialogHeader>
-          <DialogTitle>새 북마크 추가</DialogTitle>
+          <DialogTitle className="px-6 pt-6">새 북마크 추가</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
           <div className="flex items-center space-x-2">
             <Link className="h-5 w-5 shrink-0 text-muted-foreground" />
             <Input
@@ -146,7 +146,7 @@ export default function AddBookmarkDialog({ open, onOpenChange, defaultFolderId 
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t bg-background px-6 py-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
