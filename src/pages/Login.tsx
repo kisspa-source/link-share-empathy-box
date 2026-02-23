@@ -131,7 +131,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-b from-background via-accent/20 to-background">
       {/* Simple Navigation */}
       <div className="container mx-auto px-4 py-4">
         <Link 
@@ -143,16 +143,16 @@ export default function Login() {
       </div>
       
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
+        <div className="max-w-md w-full space-y-8 bg-card/95 backdrop-blur p-8 rounded-2xl shadow-lg border">
           <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-foreground">
               로그인
             </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-muted-foreground">
             계정이 없으신가요?{" "}
             <Link
               to="/signup"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium text-primary hover:text-primary/80"
             >
               회원가입
             </Link>
@@ -165,7 +165,7 @@ export default function Login() {
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 bg-white dark:bg-white"
+              className="w-full flex items-center justify-center gap-2 bg-background"
               onClick={() => handleSocialSignIn("google")}
               disabled={!!isSocialLoading}
             >
@@ -182,7 +182,7 @@ export default function Login() {
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 bg-white dark:bg-white"
+              className="w-full flex items-center justify-center gap-2 bg-background"
               onClick={() => handleSocialSignIn("github")}
               disabled={!!isSocialLoading}
             >
@@ -199,7 +199,7 @@ export default function Login() {
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 bg-[#FEE500] text-black hover:bg-[#FEE500]/90 hover:text-black dark:bg-[#FEE500]"
+              className="w-full flex items-center justify-center gap-2 bg-[#FEE500] text-black hover:bg-[#FEE500]/90 hover:text-black"
               onClick={() => handleSocialSignIn("kakao")}
               disabled={!!isSocialLoading}
             >
@@ -216,10 +216,10 @@ export default function Login() {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
+              <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-white text-gray-500">
+              <span className="px-2 bg-card text-muted-foreground">
                 또는
               </span>
             </div>
@@ -237,7 +237,7 @@ export default function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 bg-white dark:bg-white"
+                className="mt-1 bg-background"
                 disabled={isSubmitting}
               />
             </div>
@@ -253,13 +253,13 @@ export default function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 bg-white dark:bg-white"
+                className="mt-1 bg-background"
                 disabled={isSubmitting}
               />
             </div>
             <Link
               to="/forgot-password"
-              className="text-sm text-indigo-600 hover:text-indigo-500"
+              className="text-sm text-primary hover:text-primary/80"
             >
               비밀번호 찾기
             </Link>
