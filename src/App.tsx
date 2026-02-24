@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { BookmarkProvider } from "@/contexts/BookmarkContext";
 import { BookmarkViewProvider } from "@/contexts/BookmarkViewContext";
 import { SidebarNavigationProvider } from "@/contexts/SidebarNavigationContext";
+import SeoManager from "@/components/seo/SeoManager";
 
 
 // Pages
@@ -42,6 +43,7 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
+                  <SeoManager />
                   <Routes>
                     {/* Auth Routes */}
                     <Route path="/login" element={<Login />} />
